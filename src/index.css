@@ -1,0 +1,18 @@
+@import "tailwindcss";
+
+body, #root {
+  margin: 0;
+  padding: 0;
+}
+
+/* สำหรับเบราว์เซอร์ที่ใช้ WebKit (Chrome, Safari, Edge) */
+.hide-scrollbar::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+}
+
+/* สำหรับ Firefox */
+.hide-scrollbar {
+    scrollbar-width: none;
+}
+
