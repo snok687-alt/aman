@@ -79,12 +79,12 @@ const VideoPlayer = () => {
     <div className={`min-h-screen ${
       isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-100 text-black'
     }`}>
-      <div className="max-w-7xl mx-auto lg:p-6">
+      <div className="max-w-full mx-auto md:m-4 lg:p-6">
         {/* Main grid layout for larger screens, and a single column for small screens */}
-        <div className="flex flex-col lg:flex-row gap-4">
+        <div className="flex flex-col lg:flex-row gap-4 md:gap-x-8 md:mt-4">
           
           {/* Left Section: Video Player & Info */}
-          <div className="w-full lg:w-12/12">
+          <div className="w-full lg:w-2/3">
             {/* Fullscreen Video Player Container */}
             <div className="w-full aspect-video bg-black overflow-hidden shadow-lg">
               {isYouTubeUrl(video.videoUrl) ? (
@@ -127,7 +127,7 @@ const VideoPlayer = () => {
           </div>
 
           {/* Right Section: Related Videos - สำหรับจอเล็กให้เลื่อนได้ */}
-          <div className="w-full lg:w-5/12 overflow-y-auto max-h-[70vh] lg:max-h-[calc(100vh-80px)] lg:sticky top-4">
+          <div className="w-full lg:w-1/3 overflow-y-auto max-h-[70vh] lg:max-h-[calc(100vh-80px)] lg:sticky top-4">
             <div className={`rounded-lg p-3 ${
               isDarkMode ? 'bg-gray-800 lg:bg-transparent' : 'bg-white lg:bg-transparent'
             }`}>
@@ -138,7 +138,7 @@ const VideoPlayer = () => {
               }`}>
                 วิดีโอที่เกี่ยวข้อง
               </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-1 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 gap-2 md:gap-4">
                 {relatedVideos.map((relatedVideo) => (
                   <div key={relatedVideo.id} className="transform transition-transform duration-300 hover:scale-105">
                     <VideoCard 

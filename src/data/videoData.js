@@ -145,7 +145,7 @@ const videoData = [
     videoUrl: 'https://youtu.be/9U2t4UL6Bc4',
     description: 'Node.js คือ JavaScript runtime ที่รันได้บนฝั่ง server พร้อมใช้งานกับ Express.js',
     category: 'education'
-  }
+  },
 
 ]
 

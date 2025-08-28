@@ -47,7 +47,7 @@ const VideoGrid = ({ title, filter }) => {
 
   return (
     <div className={`min-h-screen p-2 md:p-6 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-full mx-auto">
         {searchTerm && searchTerm.trim() !== '' ? (
           <h1 className={`text-xl md:text-2xl font-bold mb-6 ${isDarkMode ? 'text-white' : 'text-black'}`}>
             ผลการค้นหาสำหรับ: "{searchTerm}"

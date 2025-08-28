@@ -29,7 +29,7 @@ const Header = ({ searchTerm, onSearchChange, isDarkMode, toggleTheme, isVisible
         isVisible ? 'translate-y-0' : '-translate-y-full'
       } ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}
     >
-      <div className="max-w-7xl mx-auto flex flex-col gap-4">
+      <div className="max-w-full md:px-6 md:pt-3 mx-auto flex flex-col gap-4">
         <div className="w-full flex items-center gap-4 justify-between">
           <div className="flex items-center">
             <div className={`text-red-500 text-2xl mr-2 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>
