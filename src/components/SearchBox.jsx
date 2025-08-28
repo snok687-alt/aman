@@ -1,28 +1,24 @@
 // src/components/SearchBox.jsx
-import React, { useState } from 'react';
+import React from 'react';
 
-const SearchBox = ({ onSearchResults, isDarkMode }) => {
-  const [searchTerm, setSearchTerm] = useState('');
+const SearchBox = ({ searchTerm, onSearchChange, isDarkMode }) => {
+  const handleInputChange = (e) => {
+    onSearchChange(e.target.value);
+  };
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    if (onSearchResults) {
-      onSearchResults(searchTerm);
-    }
+  const clearSearch = () => {
+    onSearchChange('');
   };
 
   return (
-    <form 
-      onSubmit={handleSearch}
-      className="flex-1 max-w-2xl mx-4"
-    >
+    <div className="flex-1 max-w-2xl mx-1 mr-4">
       <div className="relative">
         <input
           type="text"
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={handleInputChange}
           placeholder="ค้นหาวิดีโอ..."
-          className={`w-full py-2 pl-10 pr-4 rounded-full border focus:outline-none focus:ring-2 focus:ring-red-500 ${
+          className={`w-full py-2 pl-10 pr-10 rounded-full border focus:outline-none focus:ring-2 focus:ring-red-500 ${
             isDarkMode 
               ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
               : 'bg-white border-gray-300 text-black placeholder-gray-500'
@@ -38,8 +34,24 @@ const SearchBox = ({ onSearchResults, isDarkMode }) => {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
         </div>
+        {searchTerm && (
+          <button
+            type="button"
+            onClick={clearSearch}
+            className="absolute inset-y-0 right-0 pr-3 flex items-center"
+          >
+            <svg 
+              className={`w-5 h-5 ${isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-black'}`} 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
       </div>
-    </form>
+    </div>
   );
 };
 

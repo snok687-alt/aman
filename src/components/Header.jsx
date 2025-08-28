@@ -1,16 +1,16 @@
-// src/components/Header.jsx (อัปเดต)
+// src/components/Header.jsx
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Cat from '../../public/you.jpg';
 import Navbar from './Navbar';
-import SearchBox from './SearchBox'; // 新增
+import SearchBox from './SearchBox';
 
 const Header = ({ searchTerm, onSearchChange, isDarkMode, toggleTheme, isVisible }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
   const categories = [
-    { id: 'all', name: 'ทั้งหมด', path: '/all' },
+    { id: 'all', name: 'ทังหมด', path: '/all' },
     { id: 'trending', name: 'กำลังฮิต', path: '/trending' },
     { id: 'education', name: 'การศึกษา', path: '/education' },
     { id: 'travel', name: 'ท่องเที่ยว', path: '/travel' },
@@ -23,11 +23,6 @@ const Header = ({ searchTerm, onSearchChange, isDarkMode, toggleTheme, isVisible
     navigate(path);
   };
 
-  const handleSearchResults = (results) => {
-    // บันทึกผลการค้นหาใน state และนำทางไปยังหน้าผลลัพธ์
-    // ฟังก์ชันนี้จะถูกส่งผ่านไปยัง SearchBox
-  };
-
   return (
     <header 
       className={`sticky top-0 z-50 transition-transform duration-300 shadow-md p-4 w-full ${
@@ -35,7 +30,6 @@ const Header = ({ searchTerm, onSearchChange, isDarkMode, toggleTheme, isVisible
       } ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}
     >
       <div className="max-w-7xl mx-auto flex flex-col gap-4">
-        {/* แถบด้านบน: โลโก้, ช่องค้นหา และปุ่มเปลี่ยนธีม */}
         <div className="w-full flex items-center gap-4 justify-between">
           <div className="flex items-center">
             <div className={`text-red-500 text-2xl mr-2 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>
@@ -50,13 +44,12 @@ const Header = ({ searchTerm, onSearchChange, isDarkMode, toggleTheme, isVisible
             </span>
           </div>
           
-          {/* แทนที่ช่องค้นหาเดิมด้วย SearchBox ใหม่ */}
           <SearchBox 
-            onSearchResults={handleSearchResults}
+            searchTerm={searchTerm}
+            onSearchChange={onSearchChange}
             isDarkMode={isDarkMode}
           />
           
-          {/* ปุ่มเปลี่ยนธีม */}
           <button
             onClick={toggleTheme}
             className={`p-2 rounded-full transition-colors ${
@@ -78,7 +71,6 @@ const Header = ({ searchTerm, onSearchChange, isDarkMode, toggleTheme, isVisible
           </button>
         </div>
         
-        {/* ใช้คอมโพเนนต์ Navbar */}
         <Navbar 
           handleCategoryClick={handleCategoryClick} 
           categories={categories} 

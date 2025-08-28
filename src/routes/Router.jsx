@@ -12,7 +12,7 @@ const Router = () => {
       <Routes>
         <Route path="/" element={<Dashboard />}>
           <Route index element={<VideoGrid title="วิดีโอแนะนำ" filter="all" />} />
-          <Route path="all" element={<VideoGrid title="ทั้งหมด" filter="all" />} />
+          <Route path="all" element={<VideoGrid title="ทังหมด" filter="all" />} />
           <Route path="trending" element={<VideoGrid title="กำลังฮิต" filter="trending" />} />
           <Route path="education" element={<VideoGrid title="การศึกษา" filter="education" />} />
           <Route path="travel" element={<VideoGrid title="ท่องเที่ยว" filter="travel" />} />
