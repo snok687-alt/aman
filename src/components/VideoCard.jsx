@@ -1,4 +1,3 @@
-// VideoCard.jsx
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -19,25 +18,24 @@ const VideoCard = ({ video, onClick, isDarkMode }) => {
     return `${views} ดู`;
   };
 
-  const formatDuration = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const isYouTubeUrl = (url) => {
-    return url?.includes('youtube.com') || url?.includes('youtu.be');
-  };
-
-  const getYouTubeThumbnail = (url) => {
-    if (url.includes('youtube.com/watch?v=')) {
-      const videoId = url.split('v=')[1].split('&')[0];
-      return `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
-    } else if (url.includes('youtu.be/')) {
-      const videoId = url.split('youtu.be/')[1].split('?')[0];
-      return `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+  const getThumbnailUrl = (videoData) => {
+    if (videoData.thumbnail) return videoData.thumbnail;
+    
+    if (videoData.videoUrl?.includes('youtube.com') || videoData.videoUrl?.includes('youtu.be')) {
+      let videoId;
+      
+      if (videoData.videoUrl.includes('youtube.com/watch?v=')) {
+        videoId = videoData.videoUrl.split('v=')[1].split('&')[0];
+      } else if (videoData.videoUrl.includes('youtu.be/')) {
+        videoId = videoData.videoUrl.split('youtu.be/')[1].split('?')[0];
+      }
+      
+      if (videoId) {
+        return `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+      }
     }
-    return video.thumbnail;
+    
+    return 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=640&h=360&fit=crop';
   };
 
   return (
@@ -49,15 +47,14 @@ const VideoCard = ({ video, onClick, isDarkMode }) => {
     >
       <div className="relative aspect-video bg-gray-700 overflow-hidden">
         <img
-          src={isYouTubeUrl(video.videoUrl) ? getYouTubeThumbnail(video.videoUrl) : video.thumbnail}
+          src={getThumbnailUrl(video)}
           alt={video.title}
           className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
           loading="lazy"
+          onError={(e) => {
+            e.target.src = 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=640&h=360&fit=crop';
+          }}
         />
-
-        <div className="absolute bottom-2 right-2 bg-black bg-opacity-80 text-white px-1 py-1 rounded text-xs">
-          {formatDuration(video.duration)}
-        </div>
 
         <div className="absolute inset-0 flex items-center justify-center transition-all duration-300 opacity-0 hover:opacity-100 group">
           <div className="w-14 h-14 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center transform scale-90 group-hover:scale-100 transition-transform duration-300 border border-white/20">
@@ -70,15 +67,19 @@ const VideoCard = ({ video, onClick, isDarkMode }) => {
         </div>
       </div>
 
-      <div className="p-1">
+      <div className="p-3">
         <h3 className={`font-medium mb-1 line-clamp-2 text-sm leading-tight ${
           isDarkMode ? 'text-white' : 'text-black'
         }`} title={video.title}>
           {video.title}
         </h3>
+        
         <p className={`text-xs font-medium truncate ${
           isDarkMode ? 'text-gray-400' : 'text-gray-600'
-        }`}>{video.channelName}</p>
+        }`}>
+          {video.channelName}
+        </p>
+        
         <div className={`flex items-center text-xs mt-1 ${
           isDarkMode ? 'text-gray-500' : 'text-gray-400'
         }`}>
@@ -86,6 +87,16 @@ const VideoCard = ({ video, onClick, isDarkMode }) => {
           <span className="mx-1.5">•</span>
           <span>{video.uploadDate}</span>
         </div>
+        
+        {video.category && (
+          <div className="mt-2">
+            <span className={`text-xs px-2 py-1 rounded-full ${
+              isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-700'
+            }`}>
+              {video.category}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

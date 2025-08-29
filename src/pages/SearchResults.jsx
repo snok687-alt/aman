@@ -1,4 +1,3 @@
-// src/pages/SearchResults.jsx
 import React, { useEffect, useState } from 'react';
 import { useLocation, useOutletContext } from 'react-router-dom';
 import VideoCard from '../components/VideoCard';
@@ -10,7 +9,6 @@ const SearchResults = () => {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // รับคำค้นหาจาก state หรือ query parameters
   const searchQuery = location.state?.searchTerm || 
                       new URLSearchParams(location.search).get('q') || 
                       searchTerm || 
@@ -26,20 +24,20 @@ const SearchResults = () => {
     }
   }, [searchQuery, setSearchTerm]);
 
-  // ฟังก์ชันสำหรับการค้นหา
-  const performSearch = (query) => {
+  const performSearch = async (query) => {
     setLoading(true);
     
-    // ใช้ฟังก์ชัน searchVideos จาก videoData.js
-    const searchResults = searchVideos(query);
-    
-    setTimeout(() => {
+    try {
+      const searchResults = await searchVideos(query);
       setResults(searchResults);
+    } catch (error) {
+      console.error('Error searching videos:', error);
+      setResults([]);
+    } finally {
       setLoading(false);
-    }, 300);
+    }
   };
 
-  // ฟังก์ชันสำหรับการอัปเดตการค้นหาผ่าน event
   useEffect(() => {
     const handleSearchUpdated = (event) => {
       const newSearchTerm = event.detail;

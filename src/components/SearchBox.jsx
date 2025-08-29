@@ -1,4 +1,3 @@
-// src/components/SearchBox.jsx
 import React from 'react';
 
 const SearchBox = ({ searchTerm, onSearchChange, isDarkMode }) => {

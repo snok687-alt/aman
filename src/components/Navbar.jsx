@@ -1,9 +1,7 @@
-// src/components/Navbar.jsx
-
 import React from 'react';
 import { useLocation } from 'react-router-dom';
 
-const Navbar = ({ handleCategoryClick, categories }) => {
+const Navbar = ({ handleCategoryClick, categories, isDarkMode }) => {
   const location = useLocation();
 
   return (
@@ -16,7 +14,9 @@ const Navbar = ({ handleCategoryClick, categories }) => {
             className={`text-sm px-4 py-1 rounded-full border whitespace-nowrap transition-colors ${
               location.pathname === category.path
                 ? 'bg-red-500 text-white border-red-500'
-                : 'bg-gray-700 text-gray-300 border-gray-600 hover:bg-gray-600'
+                : isDarkMode 
+                  ? 'bg-gray-700 text-gray-300 border-gray-600 hover:bg-gray-600'
+                  : 'bg-gray-200 text-gray-700 border-gray-300 hover:bg-gray-300'
             }`}
           >
             {category.name}

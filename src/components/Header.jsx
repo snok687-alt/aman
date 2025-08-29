@@ -1,4 +1,3 @@
-// src/components/Header.jsx
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Cat from '../../public/you.jpg';
@@ -10,7 +9,7 @@ const Header = ({ searchTerm, onSearchChange, isDarkMode, toggleTheme, isVisible
   const location = useLocation();
 
   const categories = [
-    { id: 'all', name: 'ทังหมด', path: '/all' },
+    { id: 'all', name: 'ทั้งหมด', path: '/all' },
     { id: 'trending', name: 'กำลังฮิต', path: '/trending' },
     { id: 'education', name: 'การศึกษา', path: '/education' },
     { id: 'travel', name: 'ท่องเที่ยว', path: '/travel' },

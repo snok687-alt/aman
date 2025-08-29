@@ -1,8 +1,7 @@
-// src/components/VideoGrid.jsx
 import React, { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import VideoCard from '../components/VideoCard';
-import { getAllVideos, getVideosByCategory, searchVideos } from '../data/videoData';
+import { fetchVideosFromAPI } from '../data/videoData';
 
 const VideoGrid = ({ title, filter }) => {
   const [videos, setVideos] = useState([]);
@@ -10,26 +9,20 @@ const VideoGrid = ({ title, filter }) => {
   const { searchTerm, isDarkMode } = useOutletContext();
 
   useEffect(() => {
-    setLoading(true);
-    
-    // ใช้ setTimeout เพื่อจำลองการโหลดข้อมูล
-    const timer = setTimeout(() => {
-      let allVideos;
+    const loadVideos = async () => {
+      setLoading(true);
       
-      if (searchTerm && searchTerm.trim() !== '') {
-        // ใช้ฟังก์ชัน searchVideos ที่อัปเดตแล้ว
-        allVideos = searchVideos(searchTerm);
-      } else if (filter && filter !== 'all') {
-        allVideos = getVideosByCategory(filter);
-      } else {
-        allVideos = getAllVideos();
+      try {
+        const videosData = await fetchVideosFromAPI(filter === 'all' ? '' : filter, searchTerm);
+        setVideos(videosData);
+      } catch (error) {
+        console.error('Error loading videos:', error);
+      } finally {
+        setLoading(false);
       }
-      
-      setVideos(allVideos);
-      setLoading(false);
-    }, 300);
+    };
     
-    return () => clearTimeout(timer);
+    loadVideos();
   }, [filter, searchTerm]);
 
   if (loading) {

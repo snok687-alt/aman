@@ -1,4 +1,3 @@
-// src/components/Dashboard.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import Header from './Header';
@@ -20,27 +19,21 @@ const Dashboard = () => {
   const handleSearchChange = (term) => {
     setSearchTerm(term);
     
-    // ล้าง timeout เก่าถ้ามี
     if (searchTimeout.current) {
       clearTimeout(searchTimeout.current);
     }
     
-    // ตั้งค่า timeout ใหม่สำหรับการค้นหาแบบ real-time
     searchTimeout.current = setTimeout(() => {
       if (term.trim() !== '') {
-        // ถ้าอยู่ในหน้าค้นหาแล้ว ให้อัปเดตผลการค้นหา
         if (isSearchPage) {
-          // ส่ง event เพื่อ trigger การค้นหาใหม่ใน SearchResults
           window.dispatchEvent(new CustomEvent('searchUpdated', { detail: term }));
         } else {
-          // นำทางไปยังหน้าค้นหา
           navigate('/search', { state: { searchTerm: term } });
         }
       } else if (isSearchPage) {
-        // ถ้าลบคำค้นหาทั้งหมดและอยู่ในหน้าค้นหา
         window.dispatchEvent(new CustomEvent('searchUpdated', { detail: '' }));
       }
-    }, 500); // ดีเลย์ 500ms ก่อนค้นหา
+    }, 500);
   };
 
   useEffect(() => {
