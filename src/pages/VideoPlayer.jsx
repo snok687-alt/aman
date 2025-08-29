@@ -24,7 +24,7 @@ const VideoPlayer = () => {
   };
 
   // ฟังก์ชันตัดคำอธิบายให้สั้น
-  const truncateDescription = (text, maxLength = 23) => {
+  const truncateDescription = (text, maxLength = 20) => {
     const cleanText = removeHtmlTags(text);
     if (cleanText.length <= maxLength) return cleanText;
     return cleanText.substring(0, maxLength) + '...';
@@ -223,7 +223,7 @@ const VideoPlayer = () => {
             }`}>
               <h1 className="text-xl md:text-2xl font-bold mb-2">{video.title}</h1>
               
-              <div className="flex flex-wrap items-center text-sm mb-4">
+              <div className="flex flex-wrap items-center text-sm mb-1">
                 <span className="mr-3">{video.channelName}</span>
                 <span className="mr-3">•</span>
                 <span>{video.views.toLocaleString()} ครั้ง</span>
@@ -238,7 +238,7 @@ const VideoPlayer = () => {
               </div>
               
               {video.vod_actor && (
-                <p className="mb-2">
+                <p className="mb-1">
                   <strong>นักแสดง: </strong>
                   {video.vod_actor}
                 </p>
