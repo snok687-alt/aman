@@ -15,6 +15,20 @@ const VideoPlayer = () => {
   const [relatedVideos, setRelatedVideos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showFullDescription, setShowFullDescription] = useState(false);
+
+  // ฟังก์ชันลบ tag HTML
+  const removeHtmlTags = (html) => {
+    if (!html) return '';
+    return html.replace(/<[^>]*>/g, '');
+  };
+
+  // ฟังก์ชันตัดคำอธิบายให้สั้น
+  const truncateDescription = (text, maxLength = 23) => {
+    const cleanText = removeHtmlTags(text);
+    if (cleanText.length <= maxLength) return cleanText;
+    return cleanText.substring(0, maxLength) + '...';
+  };
 
   useEffect(() => {
     const fetchVideoData = async () => {
@@ -145,6 +159,10 @@ const VideoPlayer = () => {
     navigate(`/watch/${clickedVideo.id}`);
   };
 
+  const toggleDescription = () => {
+    setShowFullDescription(!showFullDescription);
+  };
+
   if (loading) {
     return (
       <div className={`min-h-screen flex items-center justify-center ${
@@ -174,6 +192,12 @@ const VideoPlayer = () => {
     );
   }
 
+  const cleanDescription = removeHtmlTags(video.description);
+  const shouldTruncate = cleanDescription.length > 150;
+  const displayDescription = showFullDescription 
+    ? cleanDescription 
+    : truncateDescription(cleanDescription);
+
   return (
     <div className={`min-h-screen ${
       isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-100 text-black'
@@ -184,7 +208,7 @@ const VideoPlayer = () => {
           {/* Left Section: Video Player & Info */}
           <div className="w-full lg:w-2/3">
             {/* Video Player Container */}
-            <div className="w-full aspect-video bg-black overflow-hidden shadow-lg rounded-lg">
+            <div className="w-full aspect-video bg-black overflow-hidden shadow-lg">
               <video
                 ref={videoRef}
                 controls
@@ -220,9 +244,22 @@ const VideoPlayer = () => {
                 </p>
               )}
               
-              <p className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>
-                {video.description}
-              </p>
+              <div className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>
+                <p className="whitespace-pre-line mb-2">{displayDescription}</p>
+                
+                {shouldTruncate && (
+                  <button
+                    onClick={toggleDescription}
+                    className={`text-sm font-medium ${
+                      isDarkMode 
+                        ? 'text-gray-300 hover:text-gray-300' 
+                        : 'text-gray-700 hover:text-gray-700'
+                    } transition-colors`}
+                  >
+                    {showFullDescription ? 'แสดงน้อยลง' : 'แสดงเพิ่มเติม'}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 

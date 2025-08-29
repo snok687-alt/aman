@@ -8,14 +8,24 @@ const Header = ({ searchTerm, onSearchChange, isDarkMode, toggleTheme, isVisible
   const navigate = useNavigate();
   const location = useLocation();
 
+  // หมวดหมู่ตามข้อมูลจาก API
   const categories = [
-    { id: 'all', name: 'ทั้งหมด', path: '/all' },
-    { id: 'trending', name: 'กำลังฮิต', path: '/trending' },
-    { id: 'education', name: 'การศึกษา', path: '/education' },
-    { id: 'travel', name: 'ท่องเที่ยว', path: '/travel' },
-    { id: 'cooking', name: 'ทำอาหาร', path: '/cooking' },
-    { id: 'music', name: 'ดนตรี', path: '/music' },
-    { id: 'news', name: 'ข่าว', path: '/news' }
+    // { id: 'all', name: '伦理片', path: '/all' },
+    { id: '20', name: '伦理片', path: '/category/20' },
+    { id: '40', name: '悬疑片', path: '/category/40' },
+    { id: '41', name: '战争片', path: '/category/41' },
+    { id: '42', name: '犯罪片', path: '/category/42' },
+    { id: '43', name: '剧情片', path: '/category/43' },
+    { id: '44', name: '恐怖片', path: '/category/44' },
+    { id: '45', name: '科幻片', path: '/category/45' },
+    { id: '46', name: '爱情片', path: '/category/46' },
+    { id: '47', name: '喜剧片', path: '/category/47' },
+    { id: '48', name: '动作片', path: '/category/48' },
+    { id: '49', name: '奇幻片', path: '/category/49' },
+    { id: '50', name: '冒险片', path: '/category/50' },
+    { id: '51', name: '惊悚片', path: '/category/51' },
+    { id: '52', name: '动画片', path: '/category/52' },
+    { id: '53', name: '记录片', path: '/category/53' }
   ];
 
   const handleCategoryClick = (path) => {

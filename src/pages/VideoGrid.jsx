@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useLocation } from 'react-router-dom';
 import VideoCard from '../components/VideoCard';
-import { fetchVideosFromAPI } from '../data/videoData';
+import { fetchVideosFromAPI, getVideosByCategory, searchVideos } from '../data/videoData';
 
 // Skeleton Loading Component
 const VideoCardSkeleton = ({ isDarkMode }) => (
   <div className={`rounded-lg overflow-hidden shadow-md ${
     isDarkMode ? 'bg-gray-800' : 'bg-white'
   }`}>
-    <div className="relative aspect-video bg-gray-600 animate-pulse"></div>
+    <div className="relative aspect-[3/4] bg-gray-600 animate-pulse"></div>
     <div className="p-3">
       <div className={`h-4 bg-gray-600 rounded mb-2 animate-pulse ${
         isDarkMode ? 'bg-gray-700' : 'bg-gray-300'
@@ -27,13 +27,58 @@ const VideoGrid = ({ title, filter }) => {
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
   const { searchTerm, isDarkMode } = useOutletContext();
+  const location = useLocation();
+
+  // ตรวจสอบว่าเป็น path category หรือไม่
+  const isCategoryPage = location.pathname.startsWith('/category/');
 
   useEffect(() => {
     const loadVideos = async () => {
       setLoading(true);
       
       try {
-        const videosData = await fetchVideosFromAPI(filter === 'all' ? '' : filter, searchTerm);
+        let videosData = [];
+        
+        if (searchTerm && searchTerm.trim() !== '') {
+          // กรณีค้นหา - ค้นหาในหมวดหมู่ปัจจุบัน
+          if (isCategoryPage) {
+            // ค้นหาในหมวดหมู่เฉพาะ
+            const categoryId = location.pathname.split('/').pop();
+            const allCategoryVideos = await getVideosByCategory(categoryId);
+            // กรองด้วยคำค้นหา
+            videosData = allCategoryVideos.filter(video => 
+              video.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              video.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              video.channelName.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+          } else if (filter && filter !== 'all') {
+            // ค้นหาในหมวดหมู่ filter
+            const allFilterVideos = await fetchVideosFromAPI(filter);
+            // กรองด้วยคำค้นหา
+            videosData = allFilterVideos.filter(video => 
+              video.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              video.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              video.channelName.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+          } else {
+            // ค้นหาทั้งหมด
+            videosData = await searchVideos(searchTerm);
+          }
+        } else {
+          // กรณีไม่ค้นหา - แสดงตามหมวดหมู่
+          if (isCategoryPage) {
+            // แสดงเฉพาะหมวดหมู่
+            const categoryId = location.pathname.split('/').pop();
+            videosData = await getVideosByCategory(categoryId);
+          } else if (filter && filter !== 'all') {
+            // แสดงตาม filter
+            videosData = await fetchVideosFromAPI(filter);
+          } else {
+            // แสดงทั้งหมด
+            videosData = await fetchVideosFromAPI();
+          }
+        }
+        
         setVideos(videosData);
       } catch (error) {
         console.error('Error loading videos:', error);
@@ -46,7 +91,7 @@ const VideoGrid = ({ title, filter }) => {
     const timeoutId = setTimeout(loadVideos, searchTerm ? 300 : 0);
     
     return () => clearTimeout(timeoutId);
-  }, [filter, searchTerm]);
+  }, [filter, searchTerm, location.pathname, isCategoryPage]);
 
   // แสดง Skeleton Loading
   if (loading) {
@@ -68,18 +113,31 @@ const VideoGrid = ({ title, filter }) => {
     );
   }
 
+  // ตั้งชื่อ title ตามสถานะ
+  let displayTitle = title;
+  if (searchTerm && searchTerm.trim() !== '') {
+    if (isCategoryPage) {
+      const categoryId = location.pathname.split('/').pop();
+      const categoryName = getCategoryName(categoryId);
+      displayTitle = `ค้นหา "${searchTerm}" ใน ${categoryName}`;
+    } else if (filter && filter !== 'all') {
+      const filterName = getFilterName(filter);
+      displayTitle = `ค้นหา "${searchTerm}" ใน ${filterName}`;
+    } else {
+      displayTitle = `ผลการค้นหาสำหรับ: "${searchTerm}"`;
+    }
+  } else if (isCategoryPage) {
+    const categoryId = location.pathname.split('/').pop();
+    const categoryName = getCategoryName(categoryId);
+    displayTitle = categoryName;
+  }
+
   return (
     <div className={`min-h-screen p-2 md:p-6 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
       <div className="max-w-full mx-auto">
-        {searchTerm && searchTerm.trim() !== '' ? (
-          <h1 className={`text-xl md:text-2xl font-bold mb-6 ${isDarkMode ? 'text-white' : 'text-black'}`}>
-            ผลการค้นหาสำหรับ: "{searchTerm}"
-          </h1>
-        ) : (
-          <h1 className={`text-xl md:text-2xl font-bold mb-6 ${isDarkMode ? 'text-white' : 'text-black'}`}>
-            {title}
-          </h1>
-        )}
+        <h1 className={`text-xl md:text-2xl font-bold mb-6 ${isDarkMode ? 'text-white' : 'text-black'}`}>
+          {displayTitle}
+        </h1>
         
         {videos.length === 0 ? (
           <div className={`text-center py-12 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -114,5 +172,40 @@ const VideoGrid = ({ title, filter }) => {
     </div>
   );
 };
+
+// ฟังก์ชันช่วยเหลือสำหรับการแสดงชื่อหมวดหมู่
+const getCategoryName = (categoryId) => {
+  const categoryMap = {
+    '20': '伦理片',
+    '40': '悬疑片',
+    '41': '战争片',
+    '42': '犯罪片',
+    '43': '剧情片',
+    '44': '恐怖片',
+    '45': '科幻片',
+    '46': '爱情片',
+    '47': '喜剧片',
+    '48': '动作片',
+    '49': '奇幻片',
+    '50': '冒险片',
+    '51': '惊悚片',
+    '52': '动画片',
+    '53': '记录片'
+  };
+  return categoryMap[categoryId] || `หมวดหมู่ ${categoryId}`;
+};
+
+// ฟังก์ชันช่วยเหลือสำหรับการแสดงชื่อ filter
+// const getFilterName = (filter) => {
+//   const filterMap = {
+//     'trending': 'กำลังฮิต',
+//     'education': 'การศึกษา',
+//     'travel': 'ท่องเที่ยว',
+//     'cooking': 'ทำอาหาร',
+//     'music': 'ดนตรี',
+//     'news': 'ข่าว'
+//   };
+//   return filterMap[filter] || filter;
+// };
 
 export default VideoGrid;
