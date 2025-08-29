@@ -12,14 +12,14 @@ const Footer = ({ isDarkMode }) => {
           }`}>
             © {new Date().getFullYear()} VideoStream. All rights reserved.
           </p> */}
-          <div className="flex gap-4 mt-2 md:mt-0">
+          {/* <div className="flex gap-4 mt-2 md:mt-0">
             <a href="#" className={`text-sm hover:text-red-500 ${
               isDarkMode ? 'text-gray-400' : 'text-gray-600'
             }`}>นโยบายความเป็นส่วนตัว</a>
             <a href="#" className={`text-sm hover:text-red-500 ${
               isDarkMode ? 'text-gray-400' : 'text-gray-600'
             }`}>ข้อกำหนดการใช้งาน</a>
-          </div>
+          </div> */}
         </div>
       </div>
     </footer>

@@ -10,7 +10,7 @@ const SearchBox = ({ searchTerm, onSearchChange, isDarkMode }) => {
   };
 
   return (
-    <div className="flex-1 max-w-2xl mx-1 mr-4">
+    <div className="flex-1 max-w-2xl mx-1 md:mr-45">
       <div className="relative">
         <input
           type="text"

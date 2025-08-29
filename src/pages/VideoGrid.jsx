@@ -3,6 +3,26 @@ import { useOutletContext } from 'react-router-dom';
 import VideoCard from '../components/VideoCard';
 import { fetchVideosFromAPI } from '../data/videoData';
 
+// Skeleton Loading Component
+const VideoCardSkeleton = ({ isDarkMode }) => (
+  <div className={`rounded-lg overflow-hidden shadow-md ${
+    isDarkMode ? 'bg-gray-800' : 'bg-white'
+  }`}>
+    <div className="relative aspect-video bg-gray-600 animate-pulse"></div>
+    <div className="p-3">
+      <div className={`h-4 bg-gray-600 rounded mb-2 animate-pulse ${
+        isDarkMode ? 'bg-gray-700' : 'bg-gray-300'
+      }`}></div>
+      <div className={`h-3 bg-gray-600 rounded mb-1 animate-pulse ${
+        isDarkMode ? 'bg-gray-700' : 'bg-gray-300'
+      }`}></div>
+      <div className={`h-3 bg-gray-600 rounded w-2/3 animate-pulse ${
+        isDarkMode ? 'bg-gray-700' : 'bg-gray-300'
+      }`}></div>
+    </div>
+  </div>
+);
+
 const VideoGrid = ({ title, filter }) => {
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -22,16 +42,26 @@ const VideoGrid = ({ title, filter }) => {
       }
     };
     
-    loadVideos();
+    // ใช้ debounce สำหรับ search เพื่อไม่ให้เรียก API บ่อยเกินไป
+    const timeoutId = setTimeout(loadVideos, searchTerm ? 300 : 0);
+    
+    return () => clearTimeout(timeoutId);
   }, [filter, searchTerm]);
 
+  // แสดง Skeleton Loading
   if (loading) {
     return (
       <div className={`min-h-screen p-4 md:p-6 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
         <div className="max-w-7xl mx-auto">
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto"></div>
-            <p className={`mt-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>กำลังโหลดวิดีโอ...</p>
+          <div className="animate-pulse">
+            <div className={`h-8 w-64 rounded mb-6 ${
+              isDarkMode ? 'bg-gray-700' : 'bg-gray-300'
+            }`}></div>
+          </div>
+          <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-4">
+            {Array.from({ length: 12 }).map((_, index) => (
+              <VideoCardSkeleton key={index} isDarkMode={isDarkMode} />
+            ))}
           </div>
         </div>
       </div>
@@ -60,11 +90,6 @@ const VideoGrid = ({ title, filter }) => {
               {searchTerm && searchTerm.trim() !== '' 
                 ? 'ไม่พบผลลัพธ์การค้นหา' 
                 : 'ไม่พบวิดีโอในหมวดหมู่นี้'}
-            </p>
-            <p className="text-sm">
-              {searchTerm && searchTerm.trim() !== '' 
-                ? 'ลองใช้คำค้นหาอื่นหรือลองค้นด้วยแท็ก' 
-                : 'ลองดูหมวดหมู่อื่นๆ ที่น่าสนใจ'}
             </p>
           </div>
         ) : (

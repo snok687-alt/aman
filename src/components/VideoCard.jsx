@@ -18,24 +18,9 @@ const VideoCard = ({ video, onClick, isDarkMode }) => {
     return `${views} ดู`;
   };
 
-  const getThumbnailUrl = (videoData) => {
-    if (videoData.thumbnail) return videoData.thumbnail;
-    
-    if (videoData.videoUrl?.includes('youtube.com') || videoData.videoUrl?.includes('youtu.be')) {
-      let videoId;
-      
-      if (videoData.videoUrl.includes('youtube.com/watch?v=')) {
-        videoId = videoData.videoUrl.split('v=')[1].split('&')[0];
-      } else if (videoData.videoUrl.includes('youtu.be/')) {
-        videoId = videoData.videoUrl.split('youtu.be/')[1].split('?')[0];
-      }
-      
-      if (videoId) {
-        return `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
-      }
-    }
-    
-    return 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=640&h=360&fit=crop';
+  // ฟังก์ชันตรวจสอบว่าภาพโหลดสำเร็จหรือไม่
+  const handleImageError = (e) => {
+    e.target.src = 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=640&h=360&fit=crop';
   };
 
   return (
@@ -45,15 +30,13 @@ const VideoCard = ({ video, onClick, isDarkMode }) => {
       }`}
       onClick={handleVideoClick}
     >
-      <div className="relative aspect-video bg-gray-700 overflow-hidden">
+      <div className="relative aspect-[3/4] bg-gray-700 overflow-hidden">
         <img
-          src={getThumbnailUrl(video)}
+          src={video.thumbnail}
           alt={video.title}
           className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
           loading="lazy"
-          onError={(e) => {
-            e.target.src = 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=640&h=360&fit=crop';
-          }}
+          onError={handleImageError}
         />
 
         <div className="absolute inset-0 flex items-center justify-center transition-all duration-300 opacity-0 hover:opacity-100 group">
