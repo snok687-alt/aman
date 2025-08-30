@@ -56,9 +56,10 @@ const Dashboard = () => {
       lastScrollY.current = currentScrollY;
     };
 
-    if (!isVideoPage) {
-      window.addEventListener('scroll', handleScroll, { passive: true });
-    }
+    // if (!isVideoPage) {
+    //   window.addEventListener('scroll', handleScroll, { passive: true });
+    // }
+    window.addEventListener('scroll', handleScroll, { passive: true });
 
     return () => {
       window.removeEventListener('scroll', handleScroll);
@@ -67,6 +68,16 @@ const Dashboard = () => {
       }
     };
   }, [isVideoPage]);
+
+  useEffect(() => {
+  const handleHeaderToggle = (e) => {
+    setIsHeaderVisible(e.detail === 'show');
+  };
+
+  window.addEventListener('toggleHeader', handleHeaderToggle);
+  return () => window.removeEventListener('toggleHeader', handleHeaderToggle);
+}, []);
+
 
   const toggleTheme = () => {
     setIsDarkMode((prevMode) => !prevMode);

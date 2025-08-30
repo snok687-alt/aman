@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import VideoCard from '../components/VideoCard';
-import { getVideoById, getRelatedVideos } from '../data/videoData'; // import จาก api service
+import { getVideoById, getRelatedVideos } from '../data/videoData';
 import Hls from 'hls.js';
 
 const VideoPlayer = () => {
@@ -19,7 +19,26 @@ const VideoPlayer = () => {
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const maxRetries = 3;
+  useEffect(() => {
+    let lastScrollY = window.scrollY;
 
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+
+      if (currentScrollY > lastScrollY && currentScrollY > 100) {
+        // เลื่อนลง → ซ่อน
+        window.dispatchEvent(new CustomEvent('toggleHeader', { detail: 'hide' }));
+      } else if (currentScrollY < lastScrollY) {
+        // เลื่อนขึ้น → แสดง
+        window.dispatchEvent(new CustomEvent('toggleHeader', { detail: 'show' }));
+      }
+
+      lastScrollY = currentScrollY;
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
   // ฟังก์ชันลบ tag HTML
   const removeHtmlTags = (html) => {
     if (!html) return '';
@@ -232,12 +251,12 @@ const VideoPlayer = () => {
         // ดึงวีดีโอที่เกี่ยวข้องด้วยฟังก์ชันใหม่
         console.log('Fetching related videos...');
         const related = await getRelatedVideos(
-          videoData.id, 
+          videoData.id,
           videoData.category,
           videoData.title,
           12 // จำนวนวิดีโอที่เกี่ยวข้องที่ต้องการ
         );
-        
+
         console.log('Related videos received:', related.length);
         setRelatedVideos(related);
 
@@ -337,8 +356,8 @@ const VideoPlayer = () => {
   return (
     <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-100 text-black'
       }`}>
-      <div className="max-w-full mx-auto md:m-4 lg:p-6">
-        <div className="flex flex-col lg:flex-row gap-4 md:gap-x-8 md:mt-4">
+      <div className="max-w-full mx-auto md:mt-4 md:ml-4 lg:p-1">
+        <div className="flex flex-col lg:flex-row gap-4 md:gap-x-8 md:mt-1">
 
           {/* Left Section: Video Player & Info */}
           <div className="w-full lg:w-2/3">
@@ -395,8 +414,8 @@ const VideoPlayer = () => {
                   <button
                     onClick={toggleDescription}
                     className={`text-sm font-medium ${isDarkMode
-                        ? 'text-blue-400 hover:text-blue-300'
-                        : 'text-blue-600 hover:text-blue-500'
+                      ? 'text-blue-400 hover:text-blue-300'
+                      : 'text-blue-600 hover:text-blue-500'
                       } transition-colors`}
                   >
                     {showFullDescription ? 'แสดงน้อยลง' : 'แสดงเพิ่มเติม'}
@@ -409,20 +428,20 @@ const VideoPlayer = () => {
           {/* Right Section: Related Videos */}
           <div className="w-full lg:w-1/3">
             <div
-              className={`rounded-lg p-3 ${isDarkMode ? 'bg-gray-800 lg:bg-transparent' : 'bg-white lg:bg-transparent'
+              className={`rounded-lg ${isDarkMode ? 'bg-gray-800 lg:bg-transparent' : 'bg-white lg:bg-transparent'
                 }`}
             >
               <h3
-                className={`text-xl font-bold mb-4 py-3 z-10 pl-2 lg:sticky top-0 ${isDarkMode
-                    ? 'bg-gradient-to-r from-gray-900 to-transparent'
-                    : 'bg-gradient-to-r from-gray-100 to-transparent'
+                className={`text-xl font-bold mb-1 py-3 z-10 pl-2 lg:sticky top-0 ${isDarkMode
+                  ? 'bg-gradient-to-r from-gray-900 to-transparent'
+                  : 'bg-gradient-to-r from-gray-100 to-transparent'
                   }`}
               >
                 วิดีโอที่เกี่ยวข้อง ({relatedVideos.length})
               </h3>
 
               {relatedVideos.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-1 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-h-screen md:overflow-y-auto pr-2">
                   {relatedVideos.map((relatedVideo) => (
                     <div
                       key={relatedVideo.id}
@@ -451,7 +470,6 @@ const VideoPlayer = () => {
               )}
             </div>
           </div>
-
         </div>
       </div>
     </div>
