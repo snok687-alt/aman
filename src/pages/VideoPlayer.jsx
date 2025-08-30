@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import VideoCard from '../components/VideoCard';
-import axios from 'axios';
+import { getVideoById, getRelatedVideos } from '../data/videoData'; // import จาก api service
 import Hls from 'hls.js';
 
 const VideoPlayer = () => {
@@ -32,67 +32,6 @@ const VideoPlayer = () => {
     if (cleanText.length <= maxLength) return cleanText;
     return cleanText.substring(0, maxLength) + '...';
   };
-
-  // ฟังก์ชันดึงวีดีโอที่เกี่ยวข้องแบบปรับปรุง
-  const fetchRelatedVideos = useCallback(async (categoryName, currentVideoId) => {
-    if (!categoryName) return [];
-
-    try {
-      console.log('Fetching related videos for category:', categoryName);
-
-      // ลองหลายวิธีในการค้นหาวีดีโอที่เกี่ยวข้อง
-      const requests = [
-        axios.get(`/api/provide/vod/?ac=list&t=${encodeURIComponent(categoryName)}`),
-        axios.get(`/api/provide/vod/?ac=list&wd=${encodeURIComponent(categoryName)}`),
-        axios.get(`/api/provide/vod/?ac=list&pg=1&limit=20`)
-      ];
-
-      let relatedList = [];
-
-      // ลองแต่ละ request จนกว่าจะได้ข้อมูล
-      for (const request of requests) {
-        try {
-          const response = await request;
-          const list = response.data?.list || [];
-          if (list.length > 0) {
-            relatedList = list;
-            break;
-          }
-        } catch (err) {
-          console.warn('Request failed, trying next method:', err.message);
-        }
-      }
-
-      if (relatedList.length === 0) {
-        console.log('No related videos found, fetching latest videos instead');
-        const latestResponse = await axios.get('/api/provide/vod/?ac=list');
-        relatedList = latestResponse.data?.list || [];
-      }
-
-      // กรองและจัดรูปแบบข้อมูล
-      const filteredRelated = relatedList
-        .filter(item => item.vod_id && item.vod_id !== currentVideoId)
-        .slice(0, 8) // เพิ่มจำนวน
-        .map(item => ({
-          id: item.vod_id,
-          title: item.vod_name || 'ไม่มีชื่อ',
-          channelName: item.vod_director || item.type_name || 'ไม่ระบุ',
-          views: parseInt(item.vod_hits) || 0,
-          duration: 0,
-          uploadDate: item.vod_year || 'ไม่ระบุ',
-          thumbnail: item.vod_pic || 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=640&h=360&fit=crop',
-          videoUrl: '',
-          category: item.vod_class || item.type_name || 'ทั่วไป'
-        }));
-
-      console.log('Found related videos:', filteredRelated.length);
-      return filteredRelated;
-
-    } catch (err) {
-      console.error('Error fetching related videos:', err);
-      return [];
-    }
-  }, []);
 
   // ฟังก์ชันตรวจสอบและแปลง URL วีดีโอ
   const processVideoUrl = useCallback((playUrl) => {
@@ -272,8 +211,8 @@ const VideoPlayer = () => {
 
         console.log('Fetching video data for ID:', videoId);
 
-        const detailRes = await axios.get(`/api/provide/vod/?ac=detail&ids=${videoId}`);
-        const videoData = detailRes.data?.list?.[0];
+        // ใช้ฟังก์ชันจาก api service
+        const videoData = await getVideoById(videoId);
 
         if (!videoData) {
           throw new Error('ไม่พบวีดีโอนี้');
@@ -281,26 +220,25 @@ const VideoPlayer = () => {
 
         console.log('Video data received:', videoData);
 
-        const videoUrl = processVideoUrl(videoData.vod_play_url);
+        const videoUrl = processVideoUrl(videoData.videoUrl || videoData.rawData?.vod_play_url);
 
         const processedVideo = {
           ...videoData,
-          id: videoData.vod_id,
-          title: videoData.vod_name || 'ไม่มีชื่อ',
-          channelName: videoData.vod_director || videoData.type_name || 'ไม่ระบุ',
-          views: parseInt(videoData.vod_hits) || 0,
-          duration: 0,
-          uploadDate: videoData.vod_year || 'ไม่ระบุ',
-          thumbnail: videoData.vod_pic || 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=1280&h=720&fit=crop',
-          videoUrl: videoUrl,
-          description: videoData.vod_content || 'ไม่มีคำอธิบาย',
-          category: videoData.vod_class || videoData.type_name || 'ทั่วไป'
+          videoUrl: videoUrl
         };
 
         setVideo(processedVideo);
 
-        // ดึงวีดีโอที่เกี่ยวข้อง
-        const related = await fetchRelatedVideos(processedVideo.category, videoData.vod_id);
+        // ดึงวีดีโอที่เกี่ยวข้องด้วยฟังก์ชันใหม่
+        console.log('Fetching related videos...');
+        const related = await getRelatedVideos(
+          videoData.id, 
+          videoData.category,
+          videoData.title,
+          12 // จำนวนวิดีโอที่เกี่ยวข้องที่ต้องการ
+        );
+        
+        console.log('Related videos received:', related.length);
         setRelatedVideos(related);
 
         setLoading(false);
@@ -332,7 +270,7 @@ const VideoPlayer = () => {
         hlsRef.current.destroy();
       }
     };
-  }, [videoId, processVideoUrl, loadVideo, fetchRelatedVideos]);
+  }, [videoId, processVideoUrl, loadVideo]);
 
   const handleVideoClick = useCallback((clickedVideo) => {
     navigate(`/watch/${clickedVideo.id}`);
@@ -443,10 +381,10 @@ const VideoPlayer = () => {
                 </span>
               </div>
 
-              {video.vod_actor && (
+              {video.rawData?.vod_actor && (
                 <p className="mb-2">
                   <strong>นักแสดง: </strong>
-                  {video.vod_actor}
+                  {video.rawData.vod_actor}
                 </p>
               )}
 
@@ -469,7 +407,6 @@ const VideoPlayer = () => {
           </div>
 
           {/* Right Section: Related Videos */}
-          {/* Right Section: Related Videos */}
           <div className="w-full lg:w-1/3">
             <div
               className={`rounded-lg p-3 ${isDarkMode ? 'bg-gray-800 lg:bg-transparent' : 'bg-white lg:bg-transparent'
@@ -485,7 +422,7 @@ const VideoPlayer = () => {
               </h3>
 
               {relatedVideos.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-1 gap-4">
                   {relatedVideos.map((relatedVideo) => (
                     <div
                       key={relatedVideo.id}
@@ -504,20 +441,12 @@ const VideoPlayer = () => {
                   className={`text-center py-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'
                     }`}
                 >
-                  <svg
-                    className="w-12 h-12 mx-auto mb-4 opacity-50"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-                    />
-                  </svg>
-                  <p>ไม่มีวิดีโอที่เกี่ยวข้อง</p>
+                  <div className="animate-pulse">
+                    <div className="flex flex-col items-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-current mb-4"></div>
+                      <p>กำลังค้นหาวิดีโอที่เกี่ยวข้อง...</p>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

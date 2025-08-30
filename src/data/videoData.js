@@ -309,138 +309,249 @@ export const getAllVideos = async (limit = 20) => {
 };
 
 // ฟังก์ชันสำหรับดึงวิดีโอที่เกี่ยวข้อง - ปรับปรุงใหม่หมด
-export const getRelatedVideos = async (currentVideoId, currentVideoCategory, limit = 8) => {
+export const getRelatedVideos = async (currentVideoId, currentVideoCategory, currentVideoTitle, limit = 12) => {
   try {
     if (!currentVideoId) return [];
     
-    console.log('Fetching related videos for:', { currentVideoId, currentVideoCategory });
+    console.log('Fetching related videos for:', { 
+      currentVideoId, 
+      currentVideoCategory, 
+      currentVideoTitle: currentVideoTitle?.substring(0, 50) 
+    });
     
-    let relatedVideos = [];
-    
-    // วิธีที่ 1: หาจากหมวดหมู่เดียวกัน
+    let allRelatedVideos = [];
+    const seenIds = new Set([currentVideoId]);
+
+    // กลยุทธ์ที่ 1: ค้นหาจากหมวดหมู่เดียวกัน (หลายรูปแบบ)
     if (currentVideoCategory) {
-      try {
-        const categoryResponse = await retryRequest(
-          () => axios.get(`/api/provide/vod/?ac=list&t=${encodeURIComponent(currentVideoCategory)}&limit=${limit * 2}`),
-          2,
-          1000
-        );
+      const categoryStrategies = [
+        // ใช้หมวดหมู่ตรงๆ
+        `t=${encodeURIComponent(currentVideoCategory)}`,
+        // ค้นหาจากคำค้นหา
+        `wd=${encodeURIComponent(currentVideoCategory)}`,
+        // ลองใช้ type_id หากมี
+        currentVideoCategory.includes('ID:') ? `t=${currentVideoCategory.split('ID:')[1]}` : null
+      ].filter(Boolean);
+
+      for (const strategy of categoryStrategies) {
+        if (allRelatedVideos.length >= limit) break;
         
-        const categoryList = categoryResponse.data?.list || [];
-        console.log('Category related videos found:', categoryList.length);
-        
-        if (categoryList.length > 0) {
-          const filteredIds = categoryList
-            .filter(item => item.vod_id && item.vod_id !== currentVideoId)
-            .slice(0, limit)
-            .map(item => item.vod_id);
+        try {
+          console.log(`Trying category strategy: ${strategy}`);
           
-          if (filteredIds.length > 0) {
-            relatedVideos = await fetchBatchVideoDetails(filteredIds);
+          const response = await retryRequest(
+            () => axios.get(`/api/provide/vod/?ac=list&${strategy}&limit=${limit * 2}`),
+            2,
+            800
+          );
+          
+          const categoryList = response.data?.list || [];
+          console.log(`Category strategy found: ${categoryList.length} videos`);
+          
+          if (categoryList.length > 0) {
+            const filteredIds = categoryList
+              .filter(item => item.vod_id && !seenIds.has(item.vod_id))
+              .slice(0, limit - allRelatedVideos.length)
+              .map(item => {
+                seenIds.add(item.vod_id);
+                return item.vod_id;
+              });
+            
+            if (filteredIds.length > 0) {
+              const batchVideos = await fetchBatchVideoDetails(filteredIds);
+              allRelatedVideos.push(...batchVideos);
+              console.log(`Added ${batchVideos.length} videos from category strategy`);
+            }
+          }
+        } catch (error) {
+          console.warn(`Category strategy failed: ${strategy}`, error.message);
+        }
+      }
+    }
+
+    // กลยุทธ์ที่ 2: ค้นหาจากคำสำคัญในชื่อ
+    if (allRelatedVideos.length < limit && currentVideoTitle) {
+      try {
+        // แยกคำสำคัญจากชื่อ (เอาคำที่สำคัญ)
+        const keywords = currentVideoTitle
+          .replace(/[^\u0E00-\u0E7Fa-zA-Z0-9\s]/g, ' ') // เอาแต่ไทย อังกฤษ ตัวเลข
+          .split(/\s+/)
+          .filter(word => word.length >= 2)
+          .slice(0, 3); // เอาแค่ 3 คำแรก
+        
+        for (const keyword of keywords) {
+          if (allRelatedVideos.length >= limit) break;
+          
+          console.log(`Searching by keyword: ${keyword}`);
+          
+          const response = await retryRequest(
+            () => axios.get(`/api/provide/vod/?ac=list&wd=${encodeURIComponent(keyword)}&limit=${limit}`),
+            2,
+            800
+          );
+          
+          const keywordList = response.data?.list || [];
+          console.log(`Keyword "${keyword}" found: ${keywordList.length} videos`);
+          
+          if (keywordList.length > 0) {
+            const filteredIds = keywordList
+              .filter(item => item.vod_id && !seenIds.has(item.vod_id))
+              .slice(0, Math.max(1, Math.floor((limit - allRelatedVideos.length) / keywords.length)))
+              .map(item => {
+                seenIds.add(item.vod_id);
+                return item.vod_id;
+              });
+            
+            if (filteredIds.length > 0) {
+              const batchVideos = await fetchBatchVideoDetails(filteredIds);
+              allRelatedVideos.push(...batchVideos);
+              console.log(`Added ${batchVideos.length} videos from keyword: ${keyword}`);
+            }
           }
         }
       } catch (error) {
-        console.warn('Category search failed:', error);
+        console.warn('Keyword search failed:', error.message);
       }
     }
-    
-    // วิธีที่ 2: หากไม่พอ ให้หาจาก keyword ในชื่อหมวดหมู่
-    if (relatedVideos.length < limit && currentVideoCategory) {
+
+    // กลยุทธ์ที่ 3: วิดีโอยอดนิยม/ล่าสุด (แบบสุ่มหน้า)
+    if (allRelatedVideos.length < limit) {
       try {
-        const keywordResponse = await retryRequest(
-          () => axios.get(`/api/provide/vod/?ac=list&wd=${encodeURIComponent(currentVideoCategory)}&limit=${limit}`),
+        const randomPage = Math.floor(Math.random() * 5) + 1; // หน้า 1-5
+        console.log(`Fetching popular videos from page ${randomPage}`);
+        
+        const response = await retryRequest(
+          () => axios.get(`/api/provide/vod/?ac=list&pg=${randomPage}&limit=${limit * 2}`),
           2,
-          1000
+          800
         );
         
-        const keywordList = keywordResponse.data?.list || [];
-        console.log('Keyword related videos found:', keywordList.length);
+        const popularList = response.data?.list || [];
+        console.log(`Popular videos found: ${popularList.length} videos`);
         
-        if (keywordList.length > 0) {
-          const additionalIds = keywordList
-            .filter(item => item.vod_id && 
-              item.vod_id !== currentVideoId && 
-              !relatedVideos.some(existing => existing.id === item.vod_id))
-            .slice(0, limit - relatedVideos.length)
-            .map(item => item.vod_id);
+        if (popularList.length > 0) {
+          // เรียงตามจำนวนการดู
+          const sortedByViews = popularList
+            .filter(item => item.vod_id && !seenIds.has(item.vod_id))
+            .sort((a, b) => (parseInt(b.vod_hits) || 0) - (parseInt(a.vod_hits) || 0))
+            .slice(0, limit - allRelatedVideos.length)
+            .map(item => {
+              seenIds.add(item.vod_id);
+              return item.vod_id;
+            });
           
-          if (additionalIds.length > 0) {
-            const additionalVideos = await fetchBatchVideoDetails(additionalIds);
-            relatedVideos.push(...additionalVideos);
+          if (sortedByViews.length > 0) {
+            const batchVideos = await fetchBatchVideoDetails(sortedByViews);
+            allRelatedVideos.push(...batchVideos);
+            console.log(`Added ${batchVideos.length} popular videos`);
           }
         }
       } catch (error) {
-        console.warn('Keyword search failed:', error);
+        console.warn('Popular videos search failed:', error.message);
       }
     }
-    
-    // วิธีที่ 3: หากยังไม่พอ ให้หาวิดีโอล่าสุด
-    if (relatedVideos.length < limit) {
+
+    // กลยุทธ์ที่ 4: วิดีโอแบบสุ่ม (หากยังไม่พอ)
+    if (allRelatedVideos.length < limit) {
       try {
-        console.log('Not enough related videos, fetching latest videos');
+        const randomStrategies = [
+          '/api/provide/vod/?ac=list&limit=50',
+          '/api/provide/vod/?ac=list&pg=2&limit=30',
+          '/api/provide/vod/?ac=list&pg=3&limit=30'
+        ];
         
-        const latestResponse = await retryRequest(
-          () => axios.get(`/api/provide/vod/?ac=list&limit=${limit * 2}`),
-          2,
-          1000
-        );
-        
-        const latestList = latestResponse.data?.list || [];
-        console.log('Latest videos found:', latestList.length);
-        
-        if (latestList.length > 0) {
-          const remainingIds = latestList
-            .filter(item => item.vod_id && 
-              item.vod_id !== currentVideoId && 
-              !relatedVideos.some(existing => existing.id === item.vod_id))
-            .slice(0, limit - relatedVideos.length)
-            .map(item => item.vod_id);
+        for (const url of randomStrategies) {
+          if (allRelatedVideos.length >= limit) break;
           
-          if (remainingIds.length > 0) {
-            const remainingVideos = await fetchBatchVideoDetails(remainingIds);
-            relatedVideos.push(...remainingVideos);
+          try {
+            console.log('Fetching random videos from:', url);
+            
+            const response = await retryRequest(
+              () => axios.get(url),
+              1,
+              500
+            );
+            
+            const randomList = response.data?.list || [];
+            
+            if (randomList.length > 0) {
+              // สุ่มเลือกวิดีโอ
+              const shuffled = randomList
+                .filter(item => item.vod_id && !seenIds.has(item.vod_id))
+                .sort(() => 0.5 - Math.random())
+                .slice(0, limit - allRelatedVideos.length)
+                .map(item => {
+                  seenIds.add(item.vod_id);
+                  return item.vod_id;
+                });
+              
+              if (shuffled.length > 0) {
+                const batchVideos = await fetchBatchVideoDetails(shuffled);
+                allRelatedVideos.push(...batchVideos);
+                console.log(`Added ${batchVideos.length} random videos`);
+                break; // หยุดหากได้วิดีโอแล้ว
+              }
+            }
+          } catch (error) {
+            console.warn(`Random strategy failed: ${url}`, error.message);
           }
         }
       } catch (error) {
-        console.warn('Latest videos search failed:', error);
+        console.warn('Random videos search failed:', error.message);
       }
     }
-    
-    console.log('Total related videos found:', relatedVideos.length);
-    return relatedVideos.slice(0, limit); // ตัดให้เหลือตาม limit ที่ต้องการ
-    
+
+    // กรองและจัดเรียงผลลัพธ์
+    const finalRelatedVideos = allRelatedVideos
+      .filter((video, index, self) => 
+        video && video.id && self.findIndex(v => v.id === video.id) === index
+      )
+      .slice(0, limit);
+
+    console.log(`Total related videos found: ${finalRelatedVideos.length}/${limit}`);
+    return finalRelatedVideos;
+
   } catch (error) {
     console.error('Error fetching related videos:', error);
     return [];
   }
 };
 
-// ฟังก์ชันดึงหมวดหมู่ทั้งหมด
+// ฟังก์ชันดึงหมวดหมู่ทั้งหมด - ปรับปรุงแล้ว
 export const getCategories = async () => {
   try {
     console.log('Fetching categories');
     
-    const response = await retryRequest(
-      () => axios.get('/api/provide/vod/?ac=list'),
-      2,
-      1000
-    );
+    // ลองดึงจากหลายแหล่ง
+    const responses = await Promise.allSettled([
+      axios.get('/api/provide/vod/?ac=list&limit=100'),
+      axios.get('/api/provide/vod/?ac=list&pg=2&limit=50'),
+      axios.get('/api/provide/vod/?ac=videolist') // บาง API อาจใช้ path นี้
+    ]);
     
-    const videoList = response.data?.list || [];
+    const allVideos = [];
+    responses.forEach((response, index) => {
+      if (response.status === 'fulfilled') {
+        const videoList = response.value.data?.list || [];
+        allVideos.push(...videoList);
+        console.log(`Source ${index + 1} provided ${videoList.length} videos`);
+      }
+    });
     
     // สกัดหมวดหมู่จากวิดีโอที่มี
     const categories = [...new Set(
-      videoList
+      allVideos
         .map(item => item.type_name || item.vod_class)
         .filter(Boolean)
-    )];
+        .filter(cat => cat.length > 0 && cat !== 'undefined')
+    )].sort();
     
-    console.log('Categories found:', categories.length);
+    console.log('Categories found:', categories.length, categories);
     return categories;
     
   } catch (error) {
     console.error('Error fetching categories:', error);
-    return [];
+    return ['ทั่วไป', 'บันเทิง', 'ข่าว', 'กีฬา']; // fallback categories
   }
 };
 
