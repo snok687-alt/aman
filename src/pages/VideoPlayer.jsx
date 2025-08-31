@@ -46,7 +46,7 @@ const VideoPlayer = () => {
   };
 
   // ฟังก์ชันตัดคำอธิบายให้สั้น
-  const truncateDescription = (text, maxLength = 150) => {
+  const truncateDescription = (text, maxLength = 20) => {
     const cleanText = removeHtmlTags(text);
     if (cleanText.length <= maxLength) return cleanText;
     return cleanText.substring(0, maxLength) + '...';

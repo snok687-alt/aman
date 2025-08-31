@@ -134,7 +134,7 @@ const VideoGrid = ({ title, filter }) => {
 
   return (
     <div className={`min-h-screen p-2 md:p-6 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
-      <div className="max-w-full mx-auto">
+      <div className="max-w-7xl mx-auto">
         <h1 className={`text-xl md:text-2xl font-bold mb-6 ${isDarkMode ? 'text-white' : 'text-black'}`}>
           {displayTitle}
         </h1>
@@ -196,16 +196,16 @@ const getCategoryName = (categoryId) => {
 };
 
 // ฟังก์ชันช่วยเหลือสำหรับการแสดงชื่อ filter
-// const getFilterName = (filter) => {
-//   const filterMap = {
-//     'trending': 'กำลังฮิต',
-//     'education': 'การศึกษา',
-//     'travel': 'ท่องเที่ยว',
-//     'cooking': 'ทำอาหาร',
-//     'music': 'ดนตรี',
-//     'news': 'ข่าว'
-//   };
-//   return filterMap[filter] || filter;
-// };
+const getFilterName = (filter) => {
+  const filterMap = {
+    'trending': 'กำลังฮิต',
+    'education': 'การศึกษา',
+    'travel': 'ท่องเที่ยว',
+    'cooking': 'ทำอาหาร',
+    'music': 'ดนตรี',
+    'news': 'ข่าว'
+  };
+  return filterMap[filter] || filter;
+};
 
 export default VideoGrid;

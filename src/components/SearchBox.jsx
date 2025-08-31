@@ -1,12 +1,19 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const SearchBox = ({ searchTerm, onSearchChange, isDarkMode }) => {
+  const navigate = useNavigate();
   const handleInputChange = (e) => {
     onSearchChange(e.target.value);
+    navigate('/'); // กลับไปหน้าเมนูเดิม
   };
 
   const clearSearch = () => {
     onSearchChange('');
+    // ถ้าอยู่ที่หน้า search ให้ย้อนกลับไปหน้าก่อนหน้านี้
+    if (location.pathname === '/search') {
+      navigate(-1);
+    }
   };
 
   return (
@@ -17,17 +24,16 @@ const SearchBox = ({ searchTerm, onSearchChange, isDarkMode }) => {
           value={searchTerm}
           onChange={handleInputChange}
           placeholder="ค้นหาวิดีโอ..."
-          className={`w-full py-2 pl-10 pr-10 rounded-full border focus:outline-none focus:ring-2 focus:ring-red-500 ${
-            isDarkMode 
-              ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+          className={`w-full py-2 pl-10 pr-10 rounded-full border focus:outline-none focus:ring-2 focus:ring-red-500 ${isDarkMode
+              ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
               : 'bg-white border-gray-300 text-black placeholder-gray-500'
-          }`}
+            }`}
         />
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <svg 
-            className={`w-5 h-5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} 
-            fill="none" 
-            stroke="currentColor" 
+          <svg
+            className={`w-5 h-5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}
+            fill="none"
+            stroke="currentColor"
             viewBox="0 0 24 24"
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -39,10 +45,10 @@ const SearchBox = ({ searchTerm, onSearchChange, isDarkMode }) => {
             onClick={clearSearch}
             className="absolute inset-y-0 right-0 pr-3 flex items-center"
           >
-            <svg 
-              className={`w-5 h-5 ${isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-black'}`} 
-              fill="none" 
-              stroke="currentColor" 
+            <svg
+              className={`w-5 h-5 ${isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-black'}`}
+              fill="none"
+              stroke="currentColor"
               viewBox="0 0 24 24"
             >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
