@@ -52,7 +52,7 @@ const Header = ({ searchTerm, onSearchChange, isDarkMode, toggleTheme, isVisible
               />
             </div>
             <span className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-black'} hidden sm:block`}>
-              VideoStream
+              Free for you
             </span>
           </div>
           
