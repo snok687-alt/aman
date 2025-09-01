@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useOutletContext, useLocation } from 'react-router-dom';
 import VideoCard from '../components/VideoCard';
+import { getCategoryName, getFilterName } from '../utils/Category';
 import { fetchVideosFromAPI, getVideosByCategory, searchVideos } from '../data/videoData';
 
 // Skeleton Loading Component
@@ -171,41 +172,6 @@ const VideoGrid = ({ title, filter }) => {
       </div>
     </div>
   );
-};
-
-// ฟังก์ชันช่วยเหลือสำหรับการแสดงชื่อหมวดหมู่
-const getCategoryName = (categoryId) => {
-  const categoryMap = {
-    '20': '伦理片',
-    '40': '悬疑片',
-    '41': '战争片',
-    '42': '犯罪片',
-    '43': '剧情片',
-    '44': '恐怖片',
-    '45': '科幻片',
-    '46': '爱情片',
-    '47': '喜剧片',
-    '48': '动作片',
-    '49': '奇幻片',
-    '50': '冒险片',
-    '51': '惊悚片',
-    '52': '动画片',
-    '53': '记录片'
-  };
-  return categoryMap[categoryId] || `หมวดหมู่ ${categoryId}`;
-};
-
-// ฟังก์ชันช่วยเหลือสำหรับการแสดงชื่อ filter
-const getFilterName = (filter) => {
-  const filterMap = {
-    'trending': 'กำลังฮิต',
-    'education': 'การศึกษา',
-    'travel': 'ท่องเที่ยว',
-    'cooking': 'ทำอาหาร',
-    'music': 'ดนตรี',
-    'news': 'ข่าว'
-  };
-  return filterMap[filter] || filter;
 };
 
 export default VideoGrid;

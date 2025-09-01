@@ -309,6 +309,7 @@ export const getAllVideos = async (limit = 20) => {
 };
 
 // ฟังก์ชันสำหรับดึงวิดีโอที่เกี่ยวข้อง - ปรับปรุงใหม่หมด
+// ฟังก์ชันสำหรับดึงวิดีโอที่เกี่ยวข้อง - ปรับปรุงใหม่ให้เฉพาะหมวดหมู่เดียวกัน
 export const getRelatedVideos = async (currentVideoId, currentVideoCategory, currentVideoTitle, limit = 12) => {
   try {
     if (!currentVideoId) return [];
@@ -322,198 +323,338 @@ export const getRelatedVideos = async (currentVideoId, currentVideoCategory, cur
     let allRelatedVideos = [];
     const seenIds = new Set([currentVideoId]);
 
-    // กลยุทธ์ที่ 1: ค้นหาจากหมวดหมู่เดียวกัน (หลายรูปแบบ)
-    if (currentVideoCategory) {
+    // หากไม่มีหมวดหมู่ ให้ return ว่างเปล่า
+    if (!currentVideoCategory || currentVideoCategory.trim() === '') {
+      console.log('No category provided, returning empty results');
+      return [];
+    }
+
+    // กลยุทธ์หลัก: ค้นหาจากหมวดหมู่เดียวกันเท่านั้น
+    try {
+      console.log(`Searching for videos in category: ${currentVideoCategory}`);
+      
+      // ลองหลายวิธีในการค้นหาหมวดหมู่
       const categoryStrategies = [
-        // ใช้หมวดหมู่ตรงๆ
+        // ใช้ type_name ตรงๆ
         `t=${encodeURIComponent(currentVideoCategory)}`,
-        // ค้นหาจากคำค้นหา
+        // ใช้ vod_class
+        `class=${encodeURIComponent(currentVideoCategory)}`,
+        // ค้นหาจากคำค้นหา (สำหรับกรณีที่หมวดหมู่เป็นชื่อ)
         `wd=${encodeURIComponent(currentVideoCategory)}`,
-        // ลองใช้ type_id หากมี
-        currentVideoCategory.includes('ID:') ? `t=${currentVideoCategory.split('ID:')[1]}` : null
+        // ลองใช้ type_id หากมี (จากที่เราเห็นในข้อมูล API มี type_id 20, 40-53)
+        currentVideoCategory.includes('伦理片') ? 't=20' : 
+        currentVideoCategory.includes('悬疑片') ? 't=40' :
+        currentVideoCategory.includes('战争片') ? 't=41' :
+        currentVideoCategory.includes('犯罪片') ? 't=42' :
+        currentVideoCategory.includes('剧情片') ? 't=43' :
+        currentVideoCategory.includes('恐怖片') ? 't=44' :
+        currentVideoCategory.includes('科幻片') ? 't=45' :
+        currentVideoCategory.includes('爱情片') ? 't=46' :
+        currentVideoCategory.includes('喜剧片') ? 't=47' :
+        currentVideoCategory.includes('动作片') ? 't=48' :
+        currentVideoCategory.includes('奇幻片') ? 't=49' :
+        currentVideoCategory.includes('冒险片') ? 't=50' :
+        currentVideoCategory.includes('惊悚片') ? 't=51' :
+        currentVideoCategory.includes('动画片') ? 't=52' :
+        currentVideoCategory.includes('记录片') ? 't=53' : null
       ].filter(Boolean);
 
+      // ลองแต่ละกลยุทธ์จนกว่าจะได้วิดีโอครบตามที่ต้องการ
       for (const strategy of categoryStrategies) {
         if (allRelatedVideos.length >= limit) break;
         
         try {
           console.log(`Trying category strategy: ${strategy}`);
           
-          const response = await retryRequest(
-            () => axios.get(`/api/provide/vod/?ac=list&${strategy}&limit=${limit * 2}`),
-            2,
-            800
-          );
+          // เพิ่ม pagination เพื่อให้ได้วิดีโอหลากหลายในหมวดหมู่เดียวกัน
+          const pages = [1, 2, 3]; // ลองดึงจาก 3 หน้าแรก
           
-          const categoryList = response.data?.list || [];
-          console.log(`Category strategy found: ${categoryList.length} videos`);
-          
-          if (categoryList.length > 0) {
-            const filteredIds = categoryList
-              .filter(item => item.vod_id && !seenIds.has(item.vod_id))
-              .slice(0, limit - allRelatedVideos.length)
-              .map(item => {
-                seenIds.add(item.vod_id);
-                return item.vod_id;
-              });
-            
-            if (filteredIds.length > 0) {
-              const batchVideos = await fetchBatchVideoDetails(filteredIds);
-              allRelatedVideos.push(...batchVideos);
-              console.log(`Added ${batchVideos.length} videos from category strategy`);
-            }
-          }
-        } catch (error) {
-          console.warn(`Category strategy failed: ${strategy}`, error.message);
-        }
-      }
-    }
-
-    // กลยุทธ์ที่ 2: ค้นหาจากคำสำคัญในชื่อ
-    if (allRelatedVideos.length < limit && currentVideoTitle) {
-      try {
-        // แยกคำสำคัญจากชื่อ (เอาคำที่สำคัญ)
-        const keywords = currentVideoTitle
-          .replace(/[^\u0E00-\u0E7Fa-zA-Z0-9\s]/g, ' ') // เอาแต่ไทย อังกฤษ ตัวเลข
-          .split(/\s+/)
-          .filter(word => word.length >= 2)
-          .slice(0, 3); // เอาแค่ 3 คำแรก
-        
-        for (const keyword of keywords) {
-          if (allRelatedVideos.length >= limit) break;
-          
-          console.log(`Searching by keyword: ${keyword}`);
-          
-          const response = await retryRequest(
-            () => axios.get(`/api/provide/vod/?ac=list&wd=${encodeURIComponent(keyword)}&limit=${limit}`),
-            2,
-            800
-          );
-          
-          const keywordList = response.data?.list || [];
-          console.log(`Keyword "${keyword}" found: ${keywordList.length} videos`);
-          
-          if (keywordList.length > 0) {
-            const filteredIds = keywordList
-              .filter(item => item.vod_id && !seenIds.has(item.vod_id))
-              .slice(0, Math.max(1, Math.floor((limit - allRelatedVideos.length) / keywords.length)))
-              .map(item => {
-                seenIds.add(item.vod_id);
-                return item.vod_id;
-              });
-            
-            if (filteredIds.length > 0) {
-              const batchVideos = await fetchBatchVideoDetails(filteredIds);
-              allRelatedVideos.push(...batchVideos);
-              console.log(`Added ${batchVideos.length} videos from keyword: ${keyword}`);
-            }
-          }
-        }
-      } catch (error) {
-        console.warn('Keyword search failed:', error.message);
-      }
-    }
-
-    // กลยุทธ์ที่ 3: วิดีโอยอดนิยม/ล่าสุด (แบบสุ่มหน้า)
-    if (allRelatedVideos.length < limit) {
-      try {
-        const randomPage = Math.floor(Math.random() * 5) + 1; // หน้า 1-5
-        console.log(`Fetching popular videos from page ${randomPage}`);
-        
-        const response = await retryRequest(
-          () => axios.get(`/api/provide/vod/?ac=list&pg=${randomPage}&limit=${limit * 2}`),
-          2,
-          800
-        );
-        
-        const popularList = response.data?.list || [];
-        console.log(`Popular videos found: ${popularList.length} videos`);
-        
-        if (popularList.length > 0) {
-          // เรียงตามจำนวนการดู
-          const sortedByViews = popularList
-            .filter(item => item.vod_id && !seenIds.has(item.vod_id))
-            .sort((a, b) => (parseInt(b.vod_hits) || 0) - (parseInt(a.vod_hits) || 0))
-            .slice(0, limit - allRelatedVideos.length)
-            .map(item => {
-              seenIds.add(item.vod_id);
-              return item.vod_id;
-            });
-          
-          if (sortedByViews.length > 0) {
-            const batchVideos = await fetchBatchVideoDetails(sortedByViews);
-            allRelatedVideos.push(...batchVideos);
-            console.log(`Added ${batchVideos.length} popular videos`);
-          }
-        }
-      } catch (error) {
-        console.warn('Popular videos search failed:', error.message);
-      }
-    }
-
-    // กลยุทธ์ที่ 4: วิดีโอแบบสุ่ม (หากยังไม่พอ)
-    if (allRelatedVideos.length < limit) {
-      try {
-        const randomStrategies = [
-          '/api/provide/vod/?ac=list&limit=50',
-          '/api/provide/vod/?ac=list&pg=2&limit=30',
-          '/api/provide/vod/?ac=list&pg=3&limit=30'
-        ];
-        
-        for (const url of randomStrategies) {
-          if (allRelatedVideos.length >= limit) break;
-          
-          try {
-            console.log('Fetching random videos from:', url);
+          for (const page of pages) {
+            if (allRelatedVideos.length >= limit) break;
             
             const response = await retryRequest(
-              () => axios.get(url),
-              1,
-              500
+              () => axios.get(`/api/provide/vod/?ac=list&${strategy}&pg=${page}&limit=${limit * 2}`),
+              2,
+              1000
             );
             
-            const randomList = response.data?.list || [];
+            const categoryList = response.data?.list || [];
+            console.log(`Category strategy page ${page} found: ${categoryList.length} videos`);
             
-            if (randomList.length > 0) {
-              // สุ่มเลือกวิดีโอ
-              const shuffled = randomList
-                .filter(item => item.vod_id && !seenIds.has(item.vod_id))
-                .sort(() => 0.5 - Math.random())
+            if (categoryList.length > 0) {
+              // กรองเอาแต่วิดีโอที่ยังไม่เห็น และอยู่ในหมวดหมู่เดียวกัน
+              const filteredVideos = categoryList.filter(item => {
+                if (!item.vod_id || seenIds.has(item.vod_id)) return false;
+                
+                // ตรวจสอบว่าอยู่ในหมวดหมู่เดียวกันหรือไม่
+                const itemCategory = item.type_name || item.vod_class || '';
+                return itemCategory === currentVideoCategory;
+              });
+              
+              const idsToFetch = filteredVideos
                 .slice(0, limit - allRelatedVideos.length)
                 .map(item => {
                   seenIds.add(item.vod_id);
                   return item.vod_id;
                 });
               
-              if (shuffled.length > 0) {
-                const batchVideos = await fetchBatchVideoDetails(shuffled);
-                allRelatedVideos.push(...batchVideos);
-                console.log(`Added ${batchVideos.length} random videos`);
-                break; // หยุดหากได้วิดีโอแล้ว
+              if (idsToFetch.length > 0) {
+                const batchVideos = await fetchBatchVideoDetails(idsToFetch);
+                // กรองอีกครั้งหลังจากได้ detail เพื่อให้แน่ใจว่าเป็นหมวดหมู่เดียวกัน
+                const sameCategoryVideos = batchVideos.filter(video => 
+                  video.category === currentVideoCategory || 
+                  video.rawData?.type_name === currentVideoCategory
+                );
+                
+                allRelatedVideos.push(...sameCategoryVideos);
+                console.log(`Added ${sameCategoryVideos.length} videos from category strategy page ${page}`);
+                
+                // เพิ่ม delay เล็กน้อยเพื่อไม่ให้ server ล้น
+                await new Promise(resolve => setTimeout(resolve, 300));
               }
             }
-          } catch (error) {
-            console.warn(`Random strategy failed: ${url}`, error.message);
+          }
+          
+          // หากได้วิดีโอครบแล้วจากกลยุทธ์นี้ ไม่ต้องลองกลยุทธ์อื่น
+          if (allRelatedVideos.length >= limit) break;
+          
+        } catch (error) {
+          console.warn(`Category strategy failed: ${strategy}`, error.message);
+          continue; // ลองกลยุทธ์ถัดไป
+        }
+      }
+      
+    } catch (error) {
+      console.warn('All category strategies failed:', error.message);
+    }
+
+    // หากยังได้วิดีโอไม่เพียงพอ ให้ลองค้นหาจากคำสำคัญในชื่อ (แต่ยังคงกรองตามหมวดหมู่)
+    if (allRelatedVideos.length < limit && currentVideoTitle) {
+      try {
+        // แยกคำสำคัญจากชื่อ
+        const keywords = currentVideoTitle
+          .replace(/[^\u0E00-\u0E7Fa-zA-Z0-9\s]/g, ' ')
+          .split(/\s+/)
+          .filter(word => word.length >= 2)
+          .slice(0, 2); // ลดเหลือ 2 คำเพื่อความแม่นยำ
+        
+        for (const keyword of keywords) {
+          if (allRelatedVideos.length >= limit) break;
+          
+          console.log(`Searching by keyword in same category: ${keyword}`);
+          
+          const response = await retryRequest(
+            () => axios.get(`/api/provide/vod/?ac=list&wd=${encodeURIComponent(keyword)}&limit=${limit * 2}`),
+            2,
+            1000
+          );
+          
+          const keywordList = response.data?.list || [];
+          
+          if (keywordList.length > 0) {
+            // กรองเฉพาะวิดีโอในหมวดหมู่เดียวกันเท่านั้น
+            const sameCategoryItems = keywordList.filter(item => {
+              if (!item.vod_id || seenIds.has(item.vod_id)) return false;
+              const itemCategory = item.type_name || item.vod_class || '';
+              return itemCategory === currentVideoCategory;
+            });
+            
+            const idsToFetch = sameCategoryItems
+              .slice(0, limit - allRelatedVideos.length)
+              .map(item => {
+                seenIds.add(item.vod_id);
+                return item.vod_id;
+              });
+            
+            if (idsToFetch.length > 0) {
+              const batchVideos = await fetchBatchVideoDetails(idsToFetch);
+              const sameCategoryVideos = batchVideos.filter(video => 
+                video.category === currentVideoCategory ||
+                video.rawData?.type_name === currentVideoCategory
+              );
+              
+              allRelatedVideos.push(...sameCategoryVideos);
+              console.log(`Added ${sameCategoryVideos.length} videos from keyword: ${keyword} in same category`);
+            }
           }
         }
       } catch (error) {
-        console.warn('Random videos search failed:', error.message);
+        console.warn('Keyword search in same category failed:', error.message);
       }
     }
 
-    // กรองและจัดเรียงผลลัพธ์
+    // จัดเรียงผลลัพธ์ตามความเกี่ยวข้อง (จำนวนการดูและความใหม่)
     const finalRelatedVideos = allRelatedVideos
       .filter((video, index, self) => 
         video && video.id && self.findIndex(v => v.id === video.id) === index
       )
+      .sort((a, b) => {
+        // เรียงตามจำนวนการดูก่อน
+        const viewsA = parseInt(a.views) || 0;
+        const viewsB = parseInt(b.views) || 0;
+        
+        if (viewsB !== viewsA) {
+          return viewsB - viewsA;
+        }
+        
+        // หากจำนวนการดูเท่ากัน เรียงตามความใหม่
+        const timeA = new Date(a.uploadDate || 0).getTime();
+        const timeB = new Date(b.uploadDate || 0).getTime();
+        return timeB - timeA;
+      })
       .slice(0, limit);
 
-    console.log(`Total related videos found: ${finalRelatedVideos.length}/${limit}`);
+    console.log(`Found ${finalRelatedVideos.length}/${limit} related videos in category: ${currentVideoCategory}`);
+    
+    // หากไม่พบวิดีโอเลย แสดงว่าหมวดหมู่นี้มีวิดีโอน้อย
+    if (finalRelatedVideos.length === 0) {
+      console.log(`No related videos found in category: ${currentVideoCategory}`);
+    }
+
     return finalRelatedVideos;
 
   } catch (error) {
     console.error('Error fetching related videos:', error);
     return [];
+  }
+};
+
+// ฟังก์ชันใหม่: ดึงวิดีโอเพิ่มเติมในหมวดหมู่เดียวกัน (สำหรับ infinite scroll)
+export const getMoreVideosInCategory = async (categoryName, excludeIds = [], page = 1, limit = 12) => {
+  try {
+    if (!categoryName || categoryName.trim() === '') {
+      return { videos: [], hasMore: false };
+    }
+
+    console.log(`Getting more videos in category: ${categoryName}, page: ${page}`);
+    
+    const seenIds = new Set(excludeIds);
+    let foundVideos = [];
+
+    // หา type_id ที่ตรงกับหมวดหมู่
+    const getTypeId = (category) => {
+      const categoryMap = {
+        '伦理片': '20',
+        '悬疑片': '40',
+        '战争片': '41',
+        '犯罪片': '42',
+        '剧情片': '43',
+        '恐怖片': '44',
+        '科幻片': '45',
+        '爱情片': '46',
+        '喜剧片': '47',
+        '动作片': '48',
+        '奇幻片': '49',
+        '冒险片': '50',
+        '惊悚片': '51',
+        '动画片': '52',
+        '记录片': '53'
+      };
+      return categoryMap[category];
+    };
+
+    const typeId = getTypeId(categoryName);
+    
+    // ลองหลายวิธีในการค้นหา
+    const strategies = [
+      typeId ? `t=${typeId}` : null,
+      `t=${encodeURIComponent(categoryName)}`,
+      `wd=${encodeURIComponent(categoryName)}`
+    ].filter(Boolean);
+
+    for (const strategy of strategies) {
+      if (foundVideos.length >= limit) break;
+      
+      try {
+        console.log(`Trying strategy: ${strategy} on page ${page}`);
+        
+        const response = await retryRequest(
+          () => axios.get(`/api/provide/vod/?ac=list&${strategy}&pg=${page}&limit=${limit * 2}`),
+          2,
+          1000
+        );
+        
+        const videoList = response.data?.list || [];
+        console.log(`Strategy found ${videoList.length} videos on page ${page}`);
+        
+        if (videoList.length > 0) {
+          // กรองเฉพาะวิดีโอที่ยังไม่เห็นและอยู่ในหมวดหมู่เดียวกัน
+          const filteredVideos = videoList.filter(item => {
+            if (!item.vod_id || seenIds.has(item.vod_id)) return false;
+            const itemCategory = item.type_name || item.vod_class || '';
+            return itemCategory === categoryName;
+          });
+          
+          const idsToFetch = filteredVideos
+            .slice(0, limit - foundVideos.length)
+            .map(item => {
+              seenIds.add(item.vod_id);
+              return item.vod_id;
+            });
+          
+          if (idsToFetch.length > 0) {
+            const batchVideos = await fetchBatchVideoDetails(idsToFetch);
+            const sameCategoryVideos = batchVideos.filter(video => 
+              video.category === categoryName || 
+              video.rawData?.type_name === categoryName
+            );
+            
+            foundVideos.push(...sameCategoryVideos);
+            console.log(`Added ${sameCategoryVideos.length} videos from strategy`);
+          }
+        }
+        
+        // หากได้วิดีโอครบแล้ว หยุดลองกลยุทธ์อื่น
+        if (foundVideos.length >= limit) break;
+        
+      } catch (error) {
+        console.warn(`Strategy failed: ${strategy}`, error.message);
+      }
+    }
+
+    // ตรวจสอบว่ามีข้อมูลเพิ่มเติมหรือไม่ (ลองดูหน้าถัดไป)
+    let hasMore = false;
+    if (foundVideos.length > 0) {
+      try {
+        const typeId = getTypeId(categoryName);
+        const checkStrategy = typeId ? `t=${typeId}` : `t=${encodeURIComponent(categoryName)}`;
+        
+        const nextPageResponse = await retryRequest(
+          () => axios.get(`/api/provide/vod/?ac=list&${checkStrategy}&pg=${page + 1}&limit=1`),
+          1,
+          500
+        );
+        
+        const nextPageList = nextPageResponse.data?.list || [];
+        hasMore = nextPageList.length > 0;
+      } catch (error) {
+        console.warn('Could not check for more pages:', error.message);
+        hasMore = foundVideos.length >= limit; // ถ้าได้ครบตามที่ขอ อาจมีเพิ่ม
+      }
+    }
+
+    // เรียงลำดับตามความเกี่ยวข้อง
+    const sortedVideos = foundVideos
+      .filter((video, index, self) => 
+        video && video.id && self.findIndex(v => v.id === video.id) === index
+      )
+      .sort((a, b) => {
+        const viewsA = parseInt(a.views) || 0;
+        const viewsB = parseInt(b.views) || 0;
+        return viewsB - viewsA;
+      })
+      .slice(0, limit);
+
+    console.log(`Found ${sortedVideos.length} more videos in category: ${categoryName}, hasMore: ${hasMore}`);
+    
+    return {
+      videos: sortedVideos,
+      hasMore: hasMore
+    };
+
+  } catch (error) {
+    console.error('Error getting more videos in category:', error);
+    return { videos: [], hasMore: false };
   }
 };
 

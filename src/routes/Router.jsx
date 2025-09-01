@@ -11,15 +11,8 @@ const Router = () => {
       <Routes>
         <Route path="/" element={<Dashboard />}>
           <Route index element={<VideoGrid title="วิดีโอแนะนำ" filter="all" />} />
-          {/* <Route path="all" element={<VideoGrid title="ทั้งหมด" filter="all" />} />
-          <Route path="trending" element={<VideoGrid title="กำลังฮิต" filter="trending" />} />
-          <Route path="education" element={<VideoGrid title="การศึกษา" filter="education" />} />
-          <Route path="travel" element={<VideoGrid title="ท่องเที่ยว" filter="travel" />} />
-          <Route path="cooking" element={<VideoGrid title="ทำอาหาร" filter="cooking" />} />
-          <Route path="music" element={<VideoGrid title="ดนตรี" filter="music" />} />
-          <Route path="news" element={<VideoGrid title="ข่าว" filter="news" />} /> */}
           {/* เส้นทางสำหรับหมวดหมู่จาก API */}
-          <Route index path="category/20" element={<VideoGrid title="伦理片" filter="all" />} />
+          <Route path="category/20" element={<VideoGrid title="伦理片" filter="all" />} />
           <Route path="category/40" element={<VideoGrid title="悬疑片" filter="all" />} />
           <Route path="category/41" element={<VideoGrid title="战争片" filter="all" />} />
           <Route path="category/42" element={<VideoGrid title="犯罪片" filter="all" />} />
