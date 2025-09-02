@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import Header from './Header';
-import Footer from './Footer';
 
 const Dashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -102,13 +101,6 @@ const Dashboard = () => {
       <main className={`flex-grow ${isVideoPage ? 'pt-0' : ''}`}>
         <Outlet context={{ searchTerm, isDarkMode, setSearchTerm }} />
       </main>
-
-      {!isVideoPage && (
-        <>
-          <div className="pb-16 md:pb-12"></div>
-          <Footer isDarkMode={isDarkMode} />
-        </>
-      )}
     </div>
   );
 };

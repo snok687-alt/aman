@@ -25,9 +25,8 @@ const VideoCard = ({ video, onClick, isDarkMode }) => {
 
   return (
     <div
-      className={`rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer transform hover:-translate-y-1 ${
-        isDarkMode ? 'bg-gray-800' : 'bg-white'
-      }`}
+      className={`rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer transform hover:-translate-y-1 ${isDarkMode ? 'bg-gray-800' : 'bg-white'
+        }`}
       onClick={handleVideoClick}
     >
       <div className="relative aspect-[3/4] bg-gray-700 overflow-hidden">
@@ -38,7 +37,6 @@ const VideoCard = ({ video, onClick, isDarkMode }) => {
           loading="lazy"
           onError={handleImageError}
         />
-
         <div className="absolute inset-0 flex items-center justify-center transition-all duration-300 opacity-0 hover:opacity-100 group">
           <div className="w-14 h-14 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center transform scale-90 group-hover:scale-100 transition-transform duration-300 border border-white/20">
             <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center">
@@ -49,37 +47,18 @@ const VideoCard = ({ video, onClick, isDarkMode }) => {
           </div>
         </div>
       </div>
-
       <div className="p-3">
-        <h3 className={`font-medium mb-1 line-clamp-2 text-sm leading-tight ${
-          isDarkMode ? 'text-white' : 'text-black'
-        }`} title={video.title}>
+        <p className={`font-medium mb-1 text-xs leading-tight truncate whitespace-nowrap overflow-hidden ${isDarkMode ? 'text-white' : 'text-black'
+          }`} title={video.title}>
           {video.title}
-        </h3>
-        
-        <p className={`text-xs font-medium truncate ${
-          isDarkMode ? 'text-gray-400' : 'text-gray-600'
-        }`}>
-          {video.channelName}
         </p>
-        
-        <div className={`flex items-center text-xs mt-1 ${
-          isDarkMode ? 'text-gray-500' : 'text-gray-400'
-        }`}>
+
+        <div className={`flex items-center text-xs mt-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'
+          }`}>
           <span>{formatViews(video.views)}</span>
           <span className="mx-1.5">•</span>
           <span>{video.uploadDate}</span>
         </div>
-        
-        {video.category && (
-          <div className="mt-2">
-            <span className={`text-xs px-2 py-1 rounded-full ${
-              isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-700'
-            }`}>
-              {video.category}
-            </span>
-          </div>
-        )}
       </div>
     </div>
   );

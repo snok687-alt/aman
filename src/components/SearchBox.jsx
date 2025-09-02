@@ -24,7 +24,7 @@ const SearchBox = ({ searchTerm, onSearchChange, isDarkMode }) => {
           value={searchTerm}
           onChange={handleInputChange}
           placeholder="ค้นหาวิดีโอ..."
-          className={`w-full py-2 pl-10 pr-10 rounded-full border focus:outline-none focus:ring-2 focus:ring-red-500 ${isDarkMode
+          className={`w-full py-1 pl-10 pr-10 rounded-full border focus:outline-none focus:ring-2 focus:ring-red-500 ${isDarkMode
               ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
               : 'bg-white border-gray-300 text-black placeholder-gray-500'
             }`}
@@ -43,7 +43,7 @@ const SearchBox = ({ searchTerm, onSearchChange, isDarkMode }) => {
           <button
             type="button"
             onClick={clearSearch}
-            className="absolute inset-y-0 right-0 pr-3 flex items-center"
+            className="absolute text-xs inset-y-0 right-0 pr-3 flex items-center"
           >
             <svg
               className={`w-5 h-5 ${isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-black'}`}
