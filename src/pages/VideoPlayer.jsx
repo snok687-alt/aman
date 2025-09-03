@@ -19,32 +19,32 @@ const VideoPlayer = () => {
   const [error, setError] = useState(null);
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
-  
+
   // States สำหรับ infinite scroll
   const [relatedLoading, setRelatedLoading] = useState(false);
   const [hasMoreRelated, setHasMoreRelated] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [allVideoIds, setAllVideoIds] = useState(new Set());
-  
+
   const maxRetries = 3;
 
   // ฟังก์ชันกรองและป้องกัน duplicate videos
   const removeDuplicateVideos = useCallback((videos) => {
     const seen = new Map();
     const uniqueVideos = [];
-    
+
     videos.forEach(video => {
       if (!video || !video.id) return;
-      
+
       // ใช้ ID เป็น key หลัก
       const key = video.id.toString();
-      
+
       if (!seen.has(key)) {
         seen.set(key, true);
         uniqueVideos.push(video);
       }
     });
-    
+
     return uniqueVideos;
   }, []);
 
@@ -52,7 +52,7 @@ const VideoPlayer = () => {
   const safeUpdateRelatedVideos = useCallback((newVideos, isAppend = false) => {
     setRelatedVideos(prevVideos => {
       let combinedVideos;
-      
+
       if (isAppend) {
         // รวมข้อมูลเดิมกับใหม่
         combinedVideos = [...prevVideos, ...newVideos];
@@ -60,10 +60,10 @@ const VideoPlayer = () => {
         // เปลี่ยนข้อมูลทั้งหมด
         combinedVideos = newVideos;
       }
-      
+
       // กรอง duplicate และ return unique videos
       const uniqueVideos = removeDuplicateVideos(combinedVideos);
-      
+
       console.log(`Updated related videos: ${uniqueVideos.length} unique items`);
       return uniqueVideos;
     });
@@ -94,12 +94,12 @@ const VideoPlayer = () => {
 
     const container = relatedContainerRef.current;
     const { scrollTop, scrollHeight, clientHeight } = container;
-    
+
     // เมื่อเลื่อนใกล้ถึงด้านล่าง (เหลือ 200px)
     if (scrollHeight - scrollTop <= clientHeight + 200) {
       console.log('Loading more related videos...');
       setRelatedLoading(true);
-      
+
       try {
         const result = await getMoreVideosInCategory(
           video.category,
@@ -107,26 +107,26 @@ const VideoPlayer = () => {
           currentPage + 1,
           12
         );
-        
+
         if (result.videos && result.videos.length > 0) {
           // กรองเอาแต่วิดีโอที่ยังไม่มีใน current state
           const currentVideoIds = new Set(relatedVideos.map(v => v.id.toString()));
-          const newVideos = result.videos.filter(v => 
+          const newVideos = result.videos.filter(v =>
             v && v.id && !currentVideoIds.has(v.id.toString()) && !allVideoIds.has(v.id.toString())
           );
-          
+
           if (newVideos.length > 0) {
             // อัพเดทโดยใช้ safe function
             safeUpdateRelatedVideos(newVideos, true);
-            
+
             // อัพเดท tracking IDs
             const newIds = new Set(allVideoIds);
             newVideos.forEach(v => newIds.add(v.id.toString()));
             setAllVideoIds(newIds);
-            
+
             setCurrentPage(prev => prev + 1);
             setHasMoreRelated(result.hasMore);
-            
+
             console.log(`Added ${newVideos.length} new unique related videos`);
           } else {
             console.log('No new unique videos found');
@@ -150,7 +150,7 @@ const VideoPlayer = () => {
     if (!container) return;
 
     container.addEventListener('scroll', handleRelatedScroll, { passive: true });
-    
+
     return () => {
       container.removeEventListener('scroll', handleRelatedScroll);
     };
@@ -334,22 +334,15 @@ const VideoPlayer = () => {
         setLoading(true);
         setError(null);
         setRetryCount(0);
-        
-        // รีเซ็ต related videos states
         setRelatedVideos([]);
         setHasMoreRelated(false);
         setCurrentPage(1);
-        setAllVideoIds(new Set([videoId])); // เพิ่ม current video ID
+        setAllVideoIds(new Set([videoId]));
 
         console.log('Fetching video data for ID:', videoId);
-
         const videoData = await getVideoById(videoId);
 
-        if (!videoData) {
-          throw new Error('ไม่พบวีดีโอนี้');
-        }
-
-        console.log('Video data received:', videoData);
+        if (!videoData) throw new Error('ไม่พบวีดีโอนี้');
 
         const videoUrl = processVideoUrl(videoData.videoUrl || videoData.rawData?.vod_play_url);
 
@@ -359,37 +352,9 @@ const VideoPlayer = () => {
         };
 
         setVideo(processedVideo);
-
-        // ดึงวิดีโอที่เกี่ยวข้อง (เฉพาะหมวดหมู่เดียวกัน)
-        console.log('Fetching related videos...');
-        const related = await getRelatedVideos(
-          videoData.id,
-          videoData.category,
-          videoData.title,
-          12
-        );
-
-        console.log('Related videos received:', related.length);
-        
-        // ใช้ safe update function
-        if (related && related.length > 0) {
-          safeUpdateRelatedVideos(related, false);
-          
-          // อัพเดท tracking IDs
-          const initialIds = new Set([videoId]);
-          related.forEach(v => {
-            if (v && v.id) {
-              initialIds.add(v.id.toString());
-            }
-          });
-          setAllVideoIds(initialIds);
-          
-          // ตั้งค่า hasMore สำหรับ infinite scroll
-          setHasMoreRelated(related.length >= 12);
-        }
-
         setLoading(false);
 
+        // เริ่มโหลดวิดีโอ
         if (videoUrl) {
           setTimeout(() => {
             loadVideo(videoUrl);
@@ -400,7 +365,7 @@ const VideoPlayer = () => {
         }
 
       } catch (err) {
-        console.error('เกิดข้อผิดพลาดในการดึงข้อมูลวีดีโอ:', err);
+        console.error('เกิดข้อผิดพลาดในการโหลดวีดีโอ:', err);
         setError(err.message || 'ไม่สามารถโหลดวีดีโอได้');
         setLoading(false);
         setVideoLoading(false);
@@ -416,7 +381,44 @@ const VideoPlayer = () => {
         hlsRef.current.destroy();
       }
     };
-  }, [videoId, processVideoUrl, loadVideo, safeUpdateRelatedVideos]);
+  }, [videoId, processVideoUrl, loadVideo]);
+  useEffect(() => {
+    const fetchRelated = async () => {
+      if (!video || !video.id || !video.category) return;
+
+      try {
+        console.log('Fetching related videos...');
+        const related = await getRelatedVideos(
+          video.id,
+          video.category,
+          video.title,
+          12
+        );
+
+        if (related && related.length > 0) {
+          safeUpdateRelatedVideos(related, false);
+
+          const ids = new Set([video.id]);
+          related.forEach(v => v?.id && ids.add(v.id.toString()));
+          setAllVideoIds(ids);
+
+          setHasMoreRelated(related.length >= 12);
+        } else {
+          setHasMoreRelated(false);
+        }
+
+      } catch (error) {
+        console.error('เกิดข้อผิดพลาดในการโหลดวิดีโอที่เกี่ยวข้อง:', error);
+        setHasMoreRelated(false);
+      }
+    };
+
+    // เรียกหลังจาก video ถูกตั้งค่า และ videoLoading เป็น false
+    if (video && !videoLoading) {
+      fetchRelated();
+    }
+  }, [video, videoLoading, safeUpdateRelatedVideos]);
+
 
   const handleVideoClick = useCallback((clickedVideo) => {
     navigate(`/watch/${clickedVideo.id}`);
@@ -436,15 +438,48 @@ const VideoPlayer = () => {
 
   if (loading) {
     return (
-      <div className={`min-h-screen flex items-center justify-center ${isDarkMode ? 'bg-gray-900' : 'bg-gray-100'
-        }`}>
-        <div className="flex flex-col items-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mb-4"></div>
-          <p className={isDarkMode ? 'text-white' : 'text-black'}>กำลังโหลดวีดีโอ...</p>
+      <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-100'} p-4`}>
+        <div className="max-w-full mx-auto md:mt-4">
+          <div className="flex flex-col lg:flex-row gap-4">
+
+            {/* Left side (video skeleton) */}
+            <div className="w-full lg:w-2/3 space-y-4">
+              <div className="relative w-full aspect-video bg-gray-800 animate-pulse rounded-lg" />
+
+              <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                <div className="h-6 bg-gray-700 rounded w-3/4 mb-4 animate-pulse" />
+                <div className="flex gap-2 items-center mb-2">
+                  <div className="h-4 w-24 bg-gray-600 rounded animate-pulse" />
+                  <div className="h-4 w-4 bg-gray-600 rounded-full animate-pulse" />
+                  <div className="h-4 w-16 bg-gray-600 rounded animate-pulse" />
+                </div>
+                <div className="h-4 bg-gray-600 rounded w-full mb-2 animate-pulse" />
+                <div className="h-4 bg-gray-600 rounded w-5/6 animate-pulse" />
+              </div>
+            </div>
+
+            {/* Right side (related skeleton cards) */}
+            <div className="w-full lg:w-1/3">
+              <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                <div className="h-6 w-2/3 mb-4 bg-gray-600 rounded animate-pulse" />
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {Array.from({ length: 12 }).map((_, idx) => (
+                    <div key={idx} className="space-y-2 animate-pulse">
+                      <div className="aspect-video bg-gray-700 rounded" />
+                      <div className="h-3 w-5/6 bg-gray-600 rounded" />
+                      <div className="h-3 w-3/4 bg-gray-600 rounded" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+          </div>
         </div>
       </div>
     );
   }
+
 
   if (error || !video) {
     return (
@@ -568,7 +603,7 @@ const VideoPlayer = () => {
               </h3>
 
               {relatedVideos.length > 0 ? (
-                <div 
+                <div
                   ref={relatedContainerRef}
                   className="grid grid-cols-2 md:grid-cols-3 gap-4 max-h-screen overflow-y-auto pr-2"
                   style={{ scrollBehavior: 'smooth' }}
@@ -576,7 +611,7 @@ const VideoPlayer = () => {
                   {relatedVideos.map((relatedVideo, index) => {
                     // สร้าง unique key โดยรวม ID + index เพื่อป้องกัน duplicate
                     const uniqueKey = `${relatedVideo.id}-${index}`;
-                    
+
                     return (
                       <div
                         key={uniqueKey}
@@ -590,7 +625,7 @@ const VideoPlayer = () => {
                       </div>
                     );
                   })}
-                  
+
                   {/* Loading indicator สำหรับ infinite scroll */}
                   {relatedLoading && (
                     <div className="col-span-2 md:col-span-3 flex justify-center items-center py-4">
@@ -600,7 +635,7 @@ const VideoPlayer = () => {
                       </div>
                     </div>
                   )}
-                  
+
                   {/* End of content indicator */}
                   {!hasMoreRelated && relatedVideos.length > 12 && (
                     <div className="col-span-2 md:col-span-3 text-center py-4">
@@ -610,17 +645,25 @@ const VideoPlayer = () => {
                     </div>
                   )}
                 </div>
-              ) : (
-                <div
-                  className={`text-center py-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'
-                    }`}
-                >
-                  <div className="animate-pulse">
-                    <div className="flex flex-col items-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-current mb-4"></div>
-                      <p>กำลังค้นหาวิดีโอที่เกี่ยวข้องในหมวดหมู่ "{video.category}"...</p>
+              ) : relatedLoading ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 px-2">
+                  {Array.from({ length: 12 }).map((_, idx) => (
+                    <div key={idx} className="space-y-2 animate-pulse">
+                      <div className="aspect-video bg-gray-700 rounded" />
+                      <div className="h-3 w-5/6 bg-gray-600 rounded" />
+                      <div className="h-3 w-3/4 bg-gray-600 rounded" />
                     </div>
-                  </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 px-2">
+                  {Array.from({ length: 12 }).map((_, idx) => (
+                    <div key={idx} className="space-y-2 animate-pulse">
+                      <div className="aspect-video bg-gray-700 rounded" />
+                      <div className="h-3 w-5/6 bg-gray-600 rounded" />
+                      <div className="h-3 w-3/4 bg-gray-600 rounded" />
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

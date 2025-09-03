@@ -47,7 +47,7 @@ const VideoCard = ({ video, onClick, isDarkMode }) => {
           </div>
         </div>
       </div>
-      <div className="p-3">
+      <div className="py-1 px-2">
         <p className={`font-medium mb-1 text-xs leading-tight truncate whitespace-nowrap overflow-hidden ${isDarkMode ? 'text-white' : 'text-black'
           }`} title={video.title}>
           {video.title}

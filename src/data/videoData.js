@@ -281,9 +281,315 @@ export const getVideosByCategory = async (category, limit = 20) => {
   }
 };
 
-// ฟังก์ชันสำหรับดึงวิดีโอทั้งหมด - ปรับปรุงแล้ว
-export const getAllVideos = async (limit = 20) => {
+// เพิ่มฟังก์ชันนี้ในไฟล์ data/videoData.js
+
+// ฟังก์ชันใหม่สำหรับโหลดวิดีโอหลายหน้าพร้อมกัน
+export const getAllVideosWithPagination = async (startPage = 1, pageCount = 1, limit = 18) => {
   try {
+    console.log(`Loading pages ${startPage} to ${startPage + pageCount - 1}, limit per page: ${limit}`);
+    
+    const allVideos = [];
+    const seenIds = new Set();
+    let totalPagesProcessed = 0;
+    let hasMorePages = true;
+
+    // โหลดหลายหน้าพร้อมกัน แต่แบ่งเป็นกลุมเล็กๆ เพื่อไม่ให้เซิร์ฟเวอร์ล้น
+    const batchSize = 3; // โหลดครั้งละ 3 หน้า
+    
+    for (let batchStart = startPage; batchStart < startPage + pageCount; batchStart += batchSize) {
+      const batchEnd = Math.min(batchStart + batchSize - 1, startPage + pageCount - 1);
+      const batchPromises = [];
+      
+      // สร้าง promises สำหรับ batch นี้
+      for (let page = batchStart; page <= batchEnd; page++) {
+        batchPromises.push(
+          retryRequest(
+            () => axios.get(`/api/provide/vod/?ac=list&pg=${page}&limit=${limit}`),
+            2,
+            1000
+          ).catch(error => {
+            console.warn(`Failed to load page ${page}:`, error.message);
+            return { data: { list: [] } }; // return empty result on failure
+          })
+        );
+      }
+      
+      try {
+        console.log(`Processing batch: pages ${batchStart}-${batchEnd}`);
+        
+        // รอให้ทุก request ในกลุ่มนี้เสร็จ
+        const batchResults = await Promise.allSettled(batchPromises);
+        
+        // ประมวลผลแต่ละหน้าในกลุ่ม
+        for (let i = 0; i < batchResults.length; i++) {
+          const result = batchResults[i];
+          const currentPage = batchStart + i;
+          
+          if (result.status === 'fulfilled') {
+            const videoList = result.value.data?.list || [];
+            console.log(`Page ${currentPage}: found ${videoList.length} videos`);
+            
+            if (videoList.length === 0) {
+              console.log(`Page ${currentPage}: No videos found, might be end of data`);
+              hasMorePages = false;
+              continue;
+            }
+            
+            // เก็บ video IDs ที่ไม่ซ้ำ
+            const pageVideoIds = videoList
+              .map(item => item.vod_id)
+              .filter(id => id && !seenIds.has(id))
+              .slice(0, limit);
+            
+            if (pageVideoIds.length > 0) {
+              // ดึงรายละเอียดแบบ batch
+              try {
+                const batchDetails = await fetchBatchVideoDetails(pageVideoIds);
+                
+                // กรองวิดีโอที่ได้รายละเอียดครบถ้วน
+                const validVideos = batchDetails.filter(video => 
+                  video && video.id && !seenIds.has(video.id)
+                );
+                
+                // เพิ่มใน Set เพื่อป้องกันซ้ำ
+                validVideos.forEach(video => seenIds.add(video.id));
+                allVideos.push(...validVideos);
+                
+                console.log(`Page ${currentPage}: added ${validVideos.length} valid videos`);
+                
+              } catch (detailError) {
+                console.error(`Error fetching details for page ${currentPage}:`, detailError);
+                
+                // หาก batch detail ล้มเหลว ให้ใช้ข้อมูลพื้นฐาน
+                const basicVideos = videoList
+                  .filter(item => item.vod_id && !seenIds.has(item.vod_id))
+                  .slice(0, limit)
+                  .map(item => {
+                    seenIds.add(item.vod_id);
+                    return {
+                      id: item.vod_id,
+                      title: item.vod_name || 'ไม่มีชื่อ',
+                      channelName: item.vod_director || item.type_name || 'ไม่ระบุ',
+                      views: parseInt(item.vod_hits) || 0,
+                      duration: parseInt(item.vod_duration) || 0,
+                      uploadDate: item.vod_year || item.vod_time || 'ไม่ระบุ',
+                      thumbnail: item.vod_pic || 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=640&h=360&fit=crop',
+                      videoUrl: item.vod_play_url || '',
+                      description: item.vod_content || 'ไม่มีคำอธิบาย',
+                      category: item.type_name || item.vod_class || 'ทั่วไป',
+                      rawData: item
+                    };
+                  });
+                
+                allVideos.push(...basicVideos);
+                console.log(`Page ${currentPage}: added ${basicVideos.length} basic videos as fallback`);
+              }
+            }
+            
+            totalPagesProcessed++;
+          } else {
+            console.warn(`Page ${currentPage}: Request failed`);
+          }
+        }
+        
+        // หยุดชั่วคราวระหว่างกลุ่ม
+        if (batchEnd < startPage + pageCount - 1) {
+          await new Promise(resolve => setTimeout(resolve, 800));
+        }
+        
+      } catch (error) {
+        console.error(`Error processing batch ${batchStart}-${batchEnd}:`, error);
+      }
+    }
+
+    // เรียงลำดับผลลัพธ์ตามจำนวนการดู
+    const sortedVideos = allVideos
+      .filter((video, index, self) => 
+        video && video.id && self.findIndex(v => v.id === video.id) === index
+      )
+      .sort((a, b) => {
+        // เรียงตามจำนวนการดู
+        const viewsA = parseInt(a.views) || 0;
+        const viewsB = parseInt(b.views) || 0;
+        
+        if (viewsB !== viewsA) {
+          return viewsB - viewsA;
+        }
+        
+        // หากจำนวนการดูเท่ากัน เรียงตามความใหม่
+        const timeA = new Date(a.uploadDate || 0).getTime();
+        const timeB = new Date(b.uploadDate || 0).getTime();
+        return timeB - timeA;
+      });
+
+    console.log(`
+      Total pages processed: ${totalPagesProcessed}/${pageCount}
+      Total unique videos loaded: ${sortedVideos.length}
+      Has more pages: ${hasMorePages && totalPagesProcessed === pageCount}
+    `);
+
+    return {
+      videos: sortedVideos,
+      hasMore: hasMorePages && totalPagesProcessed === pageCount,
+      totalPagesLoaded: totalPagesProcessed,
+      totalVideos: sortedVideos.length
+    };
+    
+  } catch (error) {
+    console.error('Error in getAllVideosWithPagination:', error);
+    return {
+      videos: [],
+      hasMore: false,
+      totalPagesLoaded: 0,
+      totalVideos: 0
+    };
+  }
+};
+
+// ฟังก์ชันเสริมสำหรับตรวจสอบคุณภาพข้อมูล
+export const validateAndCleanVideos = (videos) => {
+  return videos
+    .filter(video => {
+      // ตรวจสอบข้อมูลพื้นฐาน
+      if (!video || !video.id) return false;
+      if (!video.title || video.title.trim() === '') return false;
+      
+      // ตรวจสอบข้อมูลเพิ่มเติม
+      if (video.title.length > 200) video.title = video.title.substring(0, 200) + '...';
+      if (!video.thumbnail || video.thumbnail === '') {
+        video.thumbnail = 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=640&h=360&fit=crop';
+      }
+      
+      return true;
+    })
+    .map(video => ({
+      ...video,
+      views: parseInt(video.views) || 0,
+      duration: parseInt(video.duration) || 0,
+      uploadDate: video.uploadDate || 'ไม่ระบุ',
+      channelName: video.channelName || 'ไม่ระบุ',
+      description: video.description || 'ไม่มีคำอธิบาย',
+      category: video.category || 'ทั่วไป'
+    }));
+};
+
+// ฟังก์ชันเสริมสำหรับการจัดการ cache ขั้นสูง (เฉพาะสำหรับหน้าหลัก)
+export const homepageVideoCache = {
+  data: null,
+  timestamp: null,
+  ttl: 30 * 60 * 1000, // 30 นาที
+  
+  get() {
+    if (!this.data || !this.timestamp) return null;
+    if (Date.now() - this.timestamp > this.ttl) {
+      this.clear();
+      return null;
+    }
+    return this.data;
+  },
+  
+  set(videos) {
+    this.data = videos;
+    this.timestamp = Date.now();
+    console.log(`Cached ${videos.length} videos for homepage`);
+  },
+  
+  clear() {
+    this.data = null;
+    this.timestamp = null;
+  },
+  
+  isValid() {
+    return this.data && this.timestamp && (Date.now() - this.timestamp <= this.ttl);
+  }
+};
+
+// ฟังก์ชันเสริมสำหรับการโหลดข้อมูลแบบ progressive (โหลดแต่น้อย แล้วค่อยเพิ่ม)
+export const getProgressiveAllVideos = async (initialPages = 5, maxPages = 50) => {
+  try {
+    // ตรวจสอบ cache ก่อน
+    const cachedData = homepageVideoCache.get();
+    if (cachedData) {
+      console.log('Using cached homepage data');
+      return cachedData;
+    }
+    
+    console.log(`Starting progressive loading: initial ${initialPages} pages, max ${maxPages} pages`);
+    
+    // โหลดข้อมูลเริ่มต้น
+    const initialResult = await getAllVideosWithPagination(1, initialPages, 18);
+    
+    if (initialResult.videos.length === 0) {
+      console.warn('No initial videos loaded');
+      return initialResult;
+    }
+    
+    console.log(`Initial load complete: ${initialResult.videos.length} videos from ${initialPages} pages`);
+    
+    // Cache ข้อมูลเริ่มต้น
+    homepageVideoCache.set(initialResult);
+    
+    // ถ้ามีข้อมูลเพิ่มเติม และต้องการโหลดต่อ
+    if (initialResult.hasMore && initialPages < maxPages) {
+      // โหลดเพิ่มในพื้นหลัง (ไม่รอ)
+      setTimeout(async () => {
+        try {
+          console.log('Starting background loading for remaining pages...');
+          const remainingPages = maxPages - initialPages;
+          const backgroundResult = await getAllVideosWithPagination(
+            initialPages + 1, 
+            remainingPages, 
+            18
+          );
+          
+          if (backgroundResult.videos.length > 0) {
+            // รวมข้อมูลใหม่กับข้อมูลเดิม
+            const combinedVideos = [
+              ...initialResult.videos,
+              ...backgroundResult.videos
+            ].filter((video, index, self) => 
+              self.findIndex(v => v.id === video.id) === index
+            );
+            
+            // อัปเดต cache
+            const combinedResult = {
+              videos: combinedVideos,
+              hasMore: backgroundResult.hasMore,
+              totalPagesLoaded: initialPages + backgroundResult.totalPagesLoaded,
+              totalVideos: combinedVideos.length
+            };
+            
+            homepageVideoCache.set(combinedResult);
+            console.log(`Background loading complete: total ${combinedVideos.length} videos`);
+          }
+        } catch (error) {
+          console.error('Background loading failed:', error);
+        }
+      }, 2000);
+    }
+    
+    return initialResult;
+    
+  } catch (error) {
+    console.error('Error in progressive loading:', error);
+    return {
+      videos: [],
+      hasMore: false,
+      totalPagesLoaded: 0,
+      totalVideos: 0
+    };
+  }
+};
+
+// อัปเดตฟังก์ชัน getAllVideos ให้ใช้ progressive loading สำหรับหน้าหลัก
+export const getAllVideos = async (limit = 20, useProgressive = false) => {
+  try {
+    if (useProgressive) {
+      const result = await getProgressiveAllVideos(15, 100);
+      return result.videos.slice(0, limit);
+    }
+    
+    // ใช้วิธีเดิมสำหรับการโหลดปกติ
     console.log('Fetching all videos, limit:', limit);
     
     const response = await retryRequest(

@@ -52,7 +52,7 @@ const Navbar = ({ handleCategoryClick, categories, isDarkMode }) => {
             <button
               key={category.id}
               onClick={() => handleCategoryClick(category.path)}
-              className={`text-xs px-2 py-1 rounded-full border whitespace-nowrap transition-colors ${
+              className={`text-xs px-1 rounded-full border whitespace-nowrap transition-colors ${
                 location.pathname === category.path
                   ? 'bg-red-500 text-white border-red-500'
                   : isDarkMode
