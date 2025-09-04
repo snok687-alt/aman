@@ -11,7 +11,6 @@ const Router = () => {
       <Routes>
         <Route path="/" element={<Dashboard />}>
           <Route index element={<VideoGrid title="วิดีโอทั้งหมด" filter="all" />} />
-          {/* เส้นทางสำหรับหมวดหมู่จาก API - แก้ไข ID ที่ซ้ำกัน */}
           <Route path="category/20" element={<VideoGrid title="巨乳" filter="all" />} />
           <Route path="category/40" element={<VideoGrid title="自拍" filter="all" />} />
           <Route path="category/41" element={<VideoGrid title="偷情" filter="all" />} />
@@ -27,7 +26,6 @@ const Router = () => {
           <Route path="category/51" element={<VideoGrid title="麻豆" filter="all" />} />
           <Route path="category/52" element={<VideoGrid title="果冻" filter="all" />} />
           <Route path="category/53" element={<VideoGrid title="SM" filter="all" />} />
-          {/* หมวดหมู่ที่เหลือควรมี ID ไม่ซ้ำกัน */}
           <Route path="category/54" element={<VideoGrid title="重口" filter="all" />} />
           <Route path="category/55" element={<VideoGrid title="处女" filter="all" />} />
           <Route path="category/56" element={<VideoGrid title="熟女" filter="all" />} />
@@ -45,7 +43,6 @@ const Router = () => {
           <Route path="category/68" element={<VideoGrid title="精品" filter="all" />} />
           <Route path="search" element={<SearchResults />} />
           <Route path="watch/:videoId" element={<VideoPlayer />} />
-          
         </Route>
       </Routes>
     </BrowserRouter>

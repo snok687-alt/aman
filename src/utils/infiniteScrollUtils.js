@@ -1,6 +1,3 @@
-// utils/infiniteScrollUtils.js
-
-// ฟังก์ชัน debounce เพื่อลด frequency ของการเรียก function
 export const debounce = (func, wait, immediate) => {
   let timeout;
   return function executedFunction(...args) {
@@ -15,7 +12,6 @@ export const debounce = (func, wait, immediate) => {
   };
 };
 
-// ฟังก์ชันตรวจสอบว่าใกล้ถึงด้านล่างของ container หรือไม่
 export const isNearBottom = (element, threshold = 200) => {
   if (!element) return false;
   
@@ -23,7 +19,6 @@ export const isNearBottom = (element, threshold = 200) => {
   return scrollHeight - scrollTop <= clientHeight + threshold;
 };
 
-// ฟังก์ชันสร้าง intersection observer สำหรับ lazy loading
 export const createIntersectionObserver = (callback, options = {}) => {
   const defaultOptions = {
     root: null,
@@ -34,7 +29,6 @@ export const createIntersectionObserver = (callback, options = {}) => {
   return new IntersectionObserver(callback, { ...defaultOptions, ...options });
 };
 
-// ฟังก์ชันจัดการ error แบบ retry
 export const withRetry = async (fn, maxRetries = 3, delay = 1000) => {
   for (let i = 0; i <= maxRetries; i++) {
     try {
@@ -46,7 +40,6 @@ export const withRetry = async (fn, maxRetries = 3, delay = 1000) => {
   }
 };
 
-// ฟังก์ชันกรอง duplicate videos
 export const removeDuplicateVideos = (videos, keyField = 'id') => {
   const seen = new Set();
   return videos.filter(video => {
@@ -57,9 +50,8 @@ export const removeDuplicateVideos = (videos, keyField = 'id') => {
   });
 };
 
-// ฟังก์ชันสำหรับการ cache ข้อมูล (in-memory cache)
 class VideoCache {
-  constructor(maxSize = 100, ttl = 5 * 60 * 1000) { // 5 minutes TTL
+  constructor(maxSize = 100, ttl = 5 * 60 * 1000) {
     this.cache = new Map();
     this.maxSize = maxSize;
     this.ttl = ttl;
@@ -78,7 +70,6 @@ class VideoCache {
   }
 
   set(key, data) {
-    // ลบ item เก่าถ้าเกินขีดจำกัด
     if (this.cache.size >= this.maxSize) {
       const firstKey = this.cache.keys().next().value;
       this.cache.delete(firstKey);
@@ -99,20 +90,16 @@ class VideoCache {
   }
 }
 
-// สร้าง global cache instance
 export const videoCache = new VideoCache();
 
-// ฟังก์ชัน helper สำหรับการสร้าง cache key
 export const createCacheKey = (type, ...params) => {
   return `${type}:${params.filter(Boolean).join(':')}`;
 };
 
-// ฟังก์ชันจัดเรียงวิดีโอตามความเกี่ยวข้อง
 export const sortVideosByRelevance = (videos, currentVideo) => {
   if (!currentVideo || !videos.length) return videos;
   
   return videos.sort((a, b) => {
-    // เรียงตาม category match ก่อน
     const aMatchesCategory = a.category === currentVideo.category ? 1 : 0;
     const bMatchesCategory = b.category === currentVideo.category ? 1 : 0;
     
@@ -120,7 +107,6 @@ export const sortVideosByRelevance = (videos, currentVideo) => {
       return bMatchesCategory - aMatchesCategory;
     }
     
-    // เรียงตามจำนวนการดู
     const aViews = parseInt(a.views) || 0;
     const bViews = parseInt(b.views) || 0;
     
@@ -128,7 +114,6 @@ export const sortVideosByRelevance = (videos, currentVideo) => {
       return bViews - aViews;
     }
     
-    // เรียงตามความใหม่
     const aTime = new Date(a.uploadDate || 0).getTime();
     const bTime = new Date(b.uploadDate || 0).getTime();
     
@@ -136,7 +121,6 @@ export const sortVideosByRelevance = (videos, currentVideo) => {
   });
 };
 
-// ฟังก์ชัน helper สำหรับการ format ข้อมูล
 export const formatVideoData = (rawVideo) => {
   return {
     id: rawVideo.vod_id || rawVideo.id,
@@ -153,7 +137,6 @@ export const formatVideoData = (rawVideo) => {
   };
 };
 
-// ฟังก์ชันตรวจสอบความถูกต้องของข้อมูลวิดีโอ
 export const validateVideoData = (video) => {
   if (!video) return false;
   if (!video.id && !video.vod_id) return false;
@@ -161,7 +144,6 @@ export const validateVideoData = (video) => {
   return true;
 };
 
-// ฟังก์ชัน batch processing สำหรับจัดการข้อมูลจำนวนมาก
 export const processBatch = async (items, processor, batchSize = 5, delay = 500) => {
   const results = [];
   
@@ -171,7 +153,6 @@ export const processBatch = async (items, processor, batchSize = 5, delay = 500)
       batch.map(item => processor(item))
     );
     
-    // รวบรวมเฉพาะผลลัพธ์ที่สำเร็จ
     const successResults = batchResults
       .filter(result => result.status === 'fulfilled')
       .map(result => result.value)
@@ -179,7 +160,6 @@ export const processBatch = async (items, processor, batchSize = 5, delay = 500)
     
     results.push(...successResults);
     
-    // เพิ่ม delay ระหว่าง batch
     if (i + batchSize < items.length && delay > 0) {
       await new Promise(resolve => setTimeout(resolve, delay));
     }
@@ -188,7 +168,6 @@ export const processBatch = async (items, processor, batchSize = 5, delay = 500)
   return results;
 };
 
-// ฟังก์ชันสำหรับการ preload ข้อมูล
 export const preloadVideos = async (videoIds, processor) => {
   const promises = videoIds.map(async (id) => {
     try {
@@ -215,7 +194,6 @@ export const preloadVideos = async (videoIds, processor) => {
     .filter(Boolean);
 };
 
-// Hook สำหรับจัดการ infinite scroll (สำหรับใช้ใน React)
 export const useInfiniteScroll = (callback, options = {}) => {
   const {
     threshold = 200,
@@ -242,7 +220,6 @@ export const useInfiniteScroll = (callback, options = {}) => {
   };
 };
 
-// ฟังก์ชันสำหรับการ tracking performance
 export const performanceTracker = {
   timers: new Map(),
   

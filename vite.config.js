@@ -13,7 +13,6 @@ export default defineConfig({
         target: 'https://ckzy.me',
         changeOrigin: true,
         rewrite: path => path.replace(/^\/api/, '/api.php'),
-        // เพิ่ม headers เพื่อป้องกัน CORS issues
         headers: {
           'Referer': 'https://ckzy.me',
           'Origin': 'https://ckzy.me'
@@ -21,9 +20,7 @@ export default defineConfig({
       }
     }
   },
-  // เพิ่ม optimizeDeps เพื่อปรับปรุง performance
   optimizeDeps: {
     include: ['axios']
   }
 });
-
