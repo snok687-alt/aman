@@ -69,31 +69,33 @@ const VideoGrid = ({ title, filter }) => {
         if (isHomePage) {
           // หน้าหลัก - โหลด 15 หน้าแรก (ประมาณ 270 วิดีโอ)
           console.log('Loading initial 15 pages for homepage...');
-          const result = await getAllVideosWithPagination(1, 1, 18); // 15 หน้า หน้าละ 18 วิดีโอ
+          const result = await getAllVideosWithPagination(1, 15, 18); // โหลด 15 หน้าแรก
           videosData = result.videos;
-          setTotalPagesLoaded(1);
+          setTotalPagesLoaded(15);
           setHasMore(result.hasMore);
           console.log(`Loaded ${videosData.length} videos from 15 pages`);
 
           // เริ่มโหลดข้อมูลทั้งหมดในพื้นหลัง
           setTimeout(() => {
             loadAllDataInBackground();
-          }, 0); // ไม่ต้องรอ 2 วินาทีหลังแสดงข้อมูลแล้วค่อยโหลดเพิ่ม
+          }, 0);
 
         } else if (isCategoryPage) {
+          // หน้า category - โหลดเฉพาะหน้าแรก แล้วใช้ infinite scroll
           videosData = await getVideosByCategory(categoryId, 18);
+          setHasMore(true); // ตั้งค่าให้โหลดเพิ่มได้
         } else if (filter && filter !== 'all') {
+          // หน้า filter - โหลดเฉพาะหน้าแรก แล้วใช้ infinite scroll
           videosData = await fetchVideosFromAPI(filter, '', 18);
+          setHasMore(true); // ตั้งค่าให้โหลดเพิ่มได้
         } else {
+          // หน้าอื่นๆ - โหลดเฉพาะหน้าแรก
           videosData = await fetchVideosFromAPI('', '', 18);
+          setHasMore(false); // ไม่โหลดเพิ่ม
         }
       }
 
       setVideos(videosData);
-
-      if (!isHomePage) {
-        setHasMore(videosData.length >= 18);
-      }
 
     } catch (error) {
       console.error('Error loading videos:', error);
@@ -110,13 +112,12 @@ const VideoGrid = ({ title, filter }) => {
     console.log('Starting to load all data in background...');
 
     try {
-      // โหลดข้อมูลจากหน้า 1 เป็นต้นไป
-      const startPage = totalPagesLoaded + 1;
-      const maxPages = 100; // จำกัดไม่ให้เกิน 100 หน้า
+      // โหลดข้อมูลจากหน้า 16 เป็นต้นไป (เพราะโหลด 15 หน้าแรกไปแล้ว)
+      const startPage = 16;
+      const maxPages = 100;
       let currentBatchPage = startPage;
       let allNewVideos = [];
 
-      // โหลดครั้งละ 5 หน้า
       while (currentBatchPage <= maxPages) {
         try {
           const batchSize = 5;
@@ -136,8 +137,6 @@ const VideoGrid = ({ title, filter }) => {
             break;
           }
 
-          allNewVideos.push(...result.videos);
-
           // อัปเดตวิดีโอที่แสดงทีละ batch
           setVideos(prevVideos => {
             // กรองซ้ำเพื่อป้องกันวิดีโอซ้ำ
@@ -151,7 +150,7 @@ const VideoGrid = ({ title, filter }) => {
 
           currentBatchPage = endPage + 1;
 
-          // หยุดชั่วคราวระหว่าง batch เพื่อไม่ให้เซิร์ฟเวอร์ล้น
+          // หยุดชั่วคราวระหว่าง batch
           await new Promise(resolve => setTimeout(resolve, 1000));
 
           if (!result.hasMore) {
@@ -166,7 +165,7 @@ const VideoGrid = ({ title, filter }) => {
         }
       }
 
-      console.log(`Background loading completed. Total pages loaded: ${totalPagesLoaded}, Total videos: ${videos.length + allNewVideos.length}`);
+      console.log(`Background loading completed. Total pages loaded: ${totalPagesLoaded}`);
 
     } catch (error) {
       console.error('Error in background loading:', error);
@@ -175,7 +174,7 @@ const VideoGrid = ({ title, filter }) => {
     }
   }, [isHomePage, loadingAllData, totalPagesLoaded]);
 
-  // ฟังก์ชันโหลดวิดีโอเพิ่มเติม (สำหรับหน้าอื่นที่ไม่ใช่หน้าหลัก)
+  // ฟังก์ชันโหลดวิดีโอเพิ่มเติม (สำหรับหน้า category และ filter)
   const loadMoreVideos = useCallback(async () => {
     if (loadingMore || !hasMore || isHomePage) return; // หน้าหลักไม่ใช้ฟังก์ชันนี้
 
@@ -201,24 +200,24 @@ const VideoGrid = ({ title, filter }) => {
         } else if (filter && filter !== 'all') {
           moreVideos = await fetchVideosFromAPI(filter, '', 12, nextPage);
           setHasMore(moreVideos.length >= 12);
-        } else {
-          moreVideos = await fetchVideosFromAPI('', '', 12, nextPage);
-          setHasMore(moreVideos.length >= 12);
         }
       }
 
       if (moreVideos.length > 0) {
         setVideos(prevVideos => [...prevVideos, ...moreVideos]);
         setCurrentPage(nextPage);
+      } else {
+        setHasMore(false);
       }
     } catch (error) {
       console.error('Error loading more videos:', error);
+      setHasMore(false);
     } finally {
       setLoadingMore(false);
     }
   }, [currentPage, loadingMore, hasMore, searchTerm, isCategoryPage, categoryId, filter, videos, isHomePage]);
 
-  // ตั้งค่า Intersection Observer สำหรับ infinite scroll (เฉพาะหน้าที่ไม่ใช่หน้าหลัก)
+  // ตั้งค่า Intersection Observer สำหรับ infinite scroll (เฉพาะหน้า category และ filter)
   useEffect(() => {
     if (isHomePage) return; // หน้าหลักไม่ใช้ infinite scroll
 
@@ -228,7 +227,7 @@ const VideoGrid = ({ title, filter }) => {
           loadMoreVideos();
         }
       },
-      { threshold: 1.0 }
+      { threshold: 0.5 } // ลด threshold เพื่อให้โหลดเร็วขึ้น
     );
 
     const sentinel = document.getElementById('scroll-sentinel');
@@ -271,13 +270,13 @@ const VideoGrid = ({ title, filter }) => {
   // แสดง Skeleton Loading ครั้งแรก
   if (loading) {
     return (
-      <div className={`min-h-screen p-4 md:p-6 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
+      <div className={`min-h-screen p-2 md:p-4 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
         <div className="max-w-7xl mx-auto">
           <div className="animate-pulse">
-            <div className={`h-8 w-64 rounded mb-6 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'
+            <div className={`h-8 w-64 rounded mb-4 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'
               }`}></div>
           </div>
-          <div className="grid grid-cols-3 xs:grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols6 xl:grid-cols-6 gap-2 md:gap-4">
+          <div className="grid grid-cols-3 xs:grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-6 gap-2 md:gap-4">
             {Array.from({ length: 18 }).map((_, index) => (
               <VideoCardSkeleton key={index} isDarkMode={isDarkMode} />
             ))}
@@ -324,7 +323,7 @@ const VideoGrid = ({ title, filter }) => {
               ))}
             </div>
 
-            {/* Loading More Skeleton (เฉพาะหน้าที่ไม่ใช่หน้าหลัก) */}
+            {/* Loading More Skeleton (เฉพาะหน้า category และ filter) */}
             {!isHomePage && loadingMore && (
               <div className="grid grid-cols-3 xs:grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 md:gap-4 mt-4">
                 {Array.from({ length: 12 }).map((_, index) => (
@@ -333,7 +332,7 @@ const VideoGrid = ({ title, filter }) => {
               </div>
             )}
 
-            {/* 👇 แสดง Skeleton ตอนโหลดในพื้นหลัง (เฉพาะหน้า Home) */}
+            {/* แสดง Skeleton ตอนโหลดในพื้นหลัง (เฉพาะหน้า Home) */}
             {isHomePage && loadingAllData && (
               <div className="grid grid-cols-3 xs:grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 md:gap-4 mt-4">
                 {Array.from({ length: 18 }).map((_, index) => (
@@ -342,8 +341,8 @@ const VideoGrid = ({ title, filter }) => {
               </div>
             )}
 
-            {/* Scroll Sentinel สำหรับตรวจจับเมื่อเลื่อนถึงล่าง (เฉพาะหน้าที่ไม่ใช่หน้าหลัก) */}
-            {!isHomePage && <div id="scroll-sentinel" className="h-10 w-full"></div>}
+            {/* Scroll Sentinel สำหรับตรวจจับเมื่อเลื่อนถึงล่าง (เฉพาะหน้า category และ filter) */}
+            {!isHomePage && hasMore && <div id="scroll-sentinel" className="h-10 w-full"></div>}
 
             {/* แสดงข้อความเมื่อโหลดครบทั้งหมดแล้ว */}
             {!hasMore && videos.length > 0 && !loadingAllData && (

@@ -45,6 +45,7 @@ const Router = () => {
           <Route path="category/68" element={<VideoGrid title="精品" filter="all" />} />
           <Route path="search" element={<SearchResults />} />
           <Route path="watch/:videoId" element={<VideoPlayer />} />
+          
         </Route>
       </Routes>
     </BrowserRouter>
